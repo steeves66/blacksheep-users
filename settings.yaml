@@ -1,0 +1,13 @@
+---
+info:
+  title: "application API"
+  version: 0.0.1
+app:
+  show_error_details: false
+site:
+  copyright: Example
+
+# Database Configuration
+database:
+  url: "sqlite+aiosqlite:///app.db"
+  echo: false          # Mettre à True pour voir les requêtes SQL en développement
