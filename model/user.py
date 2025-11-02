@@ -10,8 +10,17 @@ Champs principaux :
 """
 
 from typing import Optional
-from datetime import datetime, timedelta, UTC
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index, JSON
+from datetime import datetime, UTC, timedelta
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    JSON,
+)
 from sqlalchemy.orm import relationship
 
 from model.base import Base
@@ -27,14 +36,19 @@ class User(Base):
     password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=False, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+
+    # ✅ CORRECTION : Utiliser lambda pour appeler datetime.now(UTC)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
-    # ✅ Relation avec les sessions
+    # ✅ Relation avec les sessions (User → Session)
     sessions = relationship(
-        "SessionModel",
+        "Session",
         back_populates="user",
         cascade="all, delete-orphan",  # Supprimer les sessions si user supprimé
     )
@@ -47,7 +61,9 @@ class User(Base):
         return {
             "id": self.id,
             "email": self.email,
+            "username": self.username,
             "is_active": self.is_active,
+            "is_superuser": self.is_superuser,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -69,109 +85,92 @@ class EmailVerificationToken(Base):
     token = Column(String(255), unique=True, index=True, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     # Relation avec User (permet d'accéder à user.verification_tokens)
     user = relationship("User", backref="verification_tokens")
- 
+
     def __repr__(self):
         return f"<EmailVerificationToken(id={self.id}, user_id={self.user_id}, is_used={self.is_used})>"
 
     def is_expired(self) -> bool:
         """Vérifie si le token a expiré"""
-        return datetime.now(UTC)() > self.expires_at
+        # ✅ CORRECTION : Retirer le double appel de fonction ()
+        return datetime.now(UTC) > self.expires_at
 
     def is_valid(self) -> bool:
         """Vérifie si le token est valide (non utilisé ET non expiré)"""
         return not self.is_used and not self.is_expired()
 
 
-class SessionModel(Base):
+class Session(Base):
     """
-    Modèle de session avec support utilisateur.
-    
-    Champs :
-    - id : Identifiant unique de session (token)
-    - user_id : ID de l'utilisateur (NULL pour sessions anonymes)
-    - data : Données JSON de la session
-    - created_at : Date de création
-    - last_accessed : Dernier accès (mis à jour à chaque requête)
-    - expires_at : Date d'expiration
-    - ip_address : Adresse IP du client
-    - user_agent : User-Agent du navigateur
+    Modèle de session pour stockage en base de données.
+
+    Supporte :
+    - Sessions anonymes (user_id = NULL)
+    - Sessions authentifiées (user_id = ID utilisateur)
     """
-    
+
     __tablename__ = "sessions"
 
-    id = Column(String(64), primary_key=True, index=True)
+    # Clé primaire : ID de session (token)
+    id = Column(String(64), primary_key=True)
+
+    # Lien utilisateur (NULL = session anonyme)
     user_id = Column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),  # Suppression en cascade
-        nullable=True,  # NULL = session anonyme
-        index=True,  # Index pour requêtes rapides
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    
+
     # Données de session (JSON sérialisé)
-    data = Column(JSON, nullable=False, default="{}")
-    
-    # Horodatages
-    created_at = Column(DateTime, nullable=False, default=datetime.now(UTC))
-    last_accessed = Column(
-        DateTime, 
-        nullable=False, 
-        default=datetime.now(UTC),
-        onupdate=datetime.now(UTC),
-        index=True,  # Index pour cleanup des sessions inactives
-    )
-    expires_at = Column(
-        DateTime, 
-        nullable=False,
-        index=True,  # Index pour cleanup des sessions expirées
-    )
-    
-    # Sécurité : Tracking
-    ip_address = Column(String(45), nullable=True)  # IPv6 = max 45 chars
+    data = Column(JSON, nullable=False, default=dict)
+
+    # Métadonnées temporelles
+    created_at = Column(DateTime, nullable=False)
+    last_accessed = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+    # Sécurité : tracking client
+    ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(255), nullable=True)
 
-    # ========================================================================
-    # Relations
-    # ========================================================================
-    
-    # ✅ NOUVEAU : Relation avec User
-    user = relationship(
-        "User",
-        back_populates="sessions",
-        lazy="joined",  # Chargement automatique pour éviter N+1 queries
-    )
-
-    # ========================================================================
-    # Index composites pour optimiser les requêtes
-    # ========================================================================
-    
+    # Index composites pour performances
     __table_args__ = (
-        # Index pour trouver toutes les sessions d'un utilisateur
         Index("idx_user_expires", "user_id", "expires_at"),
-        
-        # Index pour cleanup des sessions expirées
-        Index("idx_expires_at", "expires_at"),
-        
-        # Index pour requêtes de sécurité (IP + User-Agent)
-        Index("idx_security", "ip_address", "user_agent"),
+        Index("idx_last_accessed", "last_accessed"),
     )
 
-    # ========================================================================
-    # Méthodes utilitaires
-    # ========================================================================
-    
-    def is_expired(self) -> bool:
-        """Vérifie si la session est expirée."""
-        return self.expires_at < datetime.now(UTC)()
-    
-    def is_authenticated(self) -> bool:
-        """Vérifie si la session est liée à un utilisateur."""
-        return self.user_id is not None
-    
+    # ✅ CORRECTION : Relation avec User (Session → User), pas Session → Session !
+    user = relationship("User", back_populates="sessions")
+
     def __repr__(self) -> str:
         user_info = f"user={self.user_id}" if self.user_id else "anonymous"
-        return f"<Session id={self.id[:8]}... {user_info} expires={self.expires_at}>"
+        return f"<Session {self.id[:8]}... {user_info}>"
 
+    def is_expired(self) -> bool:
+        """Vérifie si la session est expirée"""
+        return datetime.now(UTC) > self.expires_at
+
+    def extend_expiration(self, seconds: int = 3600) -> None:
+        """
+        Prolonge la durée de vie de la session.
+
+        Args:
+            seconds: Nombre de secondes à ajouter (défaut: 3600 = 1h)
+        """
+        self.expires_at = datetime.now(UTC) + timedelta(seconds=seconds)
+
+    def to_dict(self) -> dict:
+        """Convertit la session en dictionnaire."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "last_accessed": self.last_accessed.isoformat()
+            if self.last_accessed
+            else None,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+            "is_expired": self.is_expired(),
+        }
