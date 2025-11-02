@@ -1,11 +1,13 @@
 """
 This module configures the BlackSheep application before it starts.
 """
+
 from blacksheep import Application
 from blacksheep.server.diagnostics import get_diagnostic_app
 from blacksheep.server.redirects import get_trailing_slash_middleware
 from dbsession import AsyncSessionLocal
 from rodi import Container
+import asyncio
 
 from app.auth import configure_authentication
 from app.docs import configure_docs
@@ -25,18 +27,17 @@ def configure_application(
 
     # Configuration des sessions EN PREMIER
     session_store = DatabaseSessionStore(
-        cookie_name="session",
-        session_lifetime=86400,  # 24 heures
-        track_ip=True,
-        track_user_agent=True,
+        cookie_name="session_id",
+        session_max_age=86400,  # 24h authentifiés
+        anonymous_max_age=3600,  # 1h anonymes
         secure=False,  # True en production avec HTTPS
         same_site="lax",
-        strict_security=True,
     )
 
+    # ✅ Activer les sessions (méthode officielle)
     app.use_sessions(session_store)
 
-    app.middlewares.append(get_trailing_slash_middleware())
+    # app.middlewares.append(get_trailing_slash_middleware())
 
     app.serve_files("app/static")
     configure_error_handlers(app)

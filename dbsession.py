@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.settings import load_settings
 
@@ -9,6 +10,7 @@ engine = create_async_engine(
     settings.database.url,
     echo=settings.database.echo,  # Mettre à True pour voir les requêtes SQL en développement
     future=True,
+    poolclass=NullPool,  # Important pour SQLite
 )
 
 # Factory pour créer des sessions async
