@@ -1,7 +1,215 @@
-from blacksheep import Request, text, json
+from blacksheep import Request, text, json, redirect, Response
 from blacksheep.server.controllers import Controller, get, post
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
+from urllib.parse import urlencode
+from itsdangerous import SignatureExpired, BadSignature
+
+from domain.user_service import UserService
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class Users(Controller):
+    """
+    Contrôleur MVC pour la gestion des utilisateurs
+
+    Routes générées :
+    - GET  /users/register              -> Afficher le formulaire d'inscription
+    - POST /users/register              -> Traiter l'inscription
+    - GET  /users/verify-email/{token}  -> Vérifier l'email
+    - GET  /users/resend-verification   -> Afficher le formulaire de renvoi
+    - POST /users/resend-verification   -> Renvoyer l'email
+    - GET  /users/success               -> Page de succès
+    """
+
+    def __init__(self, user_service: UserService):
+        self.user_service = user_service
+
+    @classmethod
+    def route(cls) -> str:
+        """Route de base pour tous les endpoints de ce contrôleur"""
+        return "/users"
+
+    @classmethod
+    def class_name(cls) -> str:
+        """Nom de la classe pour la génération automatique des routes"""
+        return "users"
+
+    @get("/register/view")
+    async def register_view(self) -> Response:
+        """
+        Afficher le formulaire d'inscription
+        """
+        return self.view(model={"title": "Inscription", "error": None, "form_data": {}})
+
+    @post("/register")
+    async def create_user(self, request: Request) -> Response:
+        form_data = await request.form()
+
+        username = form_data.get("username")
+        email = form_data.get("email")
+        password = form_data.get("password")
+        confirm_password = form_data.get("confirm_password")
+
+        user, email_sent = await self.user_service.create_user(
+            username=username, email=email, password=password
+        )
+
+        logger.info(f"User registered successfully: {user.email}")
+
+        return self.view("success", model={"user": user})
+
+    @get("/verify-email/{token}")
+    async def verify_email(self, token: str) -> Response:
+        """
+        Vérifier l'email d'un utilisateur à partir du lien reçu
+        """
+        success, message, user = await self.user_service.verify_email(token)
+
+        # cas Token expiré
+        if message == "expired" and user:
+            return redirect(
+                f"/users/resend-verification?reason=expired&email={user.email}"
+            )
+
+        # CAS 2 : Compte déjà activé (token déjà utilisé)
+        if message == "already_active" and user:
+            return redirect(f"/users/account-active?email={user.email}")
+
+        if success:
+            params = urlencode(
+                {
+                    "title": "Compte activé",
+                    "message": message,
+                    "can_login": "1",
+                }
+            )
+            return redirect(f"/users/home?{params}")
+        else:
+            params = urlencode(
+                {
+                    "title": "Vérification échouée",
+                    "message": message,
+                    "can_resend": "1",
+                }
+            )
+            return redirect(f"/users/home?{params}")
+
+    @get("/home")
+    async def home(self, request: Request) -> Response:
+        title = request.query.get("title")
+        message = request.query.get("message")
+
+        can_login = request.query.get("can_login") is not None
+        can_resend = request.query.get("can_resend") is not None
+
+        return self.view(
+            "home",
+            model={
+                "title": title,
+                "message": message,
+                "can_login": can_login,
+                "can_resend": can_resend,
+            },
+        )
+
+    @get("/account-active")
+    async def account_active(self, request: Request) -> Response:
+        """Page informant que le compte est déjà activé"""
+        email_list = request.query.get("email")
+        email = email_list[0] if email_list else ""
+
+        return self.view("account_active", model={"email": email})
+
+    # ==========================================
+    # RENVOI D'EMAIL
+    # ==========================================
+
+    # GET /users/resend-verification?reason=expired&email=user@example.com
+    @get("/resend-verification")
+    async def resend_verification(self, request: Request) -> Response:
+        reason_list = request.query.get("reason", "default")
+        email_list = request.query.get("email", "")
+
+        # Extraire la première valeur ou utiliser une valeur par défaut
+        reason = reason_list[0] if reason_list else "default"
+        email = email_list[0] if email_list else ""
+
+        messages = {
+            "expired": "Votre lien a expiré.",
+            "not_received": "Vous n'avez pas reçu l'email ?",
+            "login_inactive": "Votre compte n'est pas activé.",
+            "default": "Entrez votre email pour recevoir un nouveau lien de vérification.",
+        }
+
+        return self.view(
+            "resend_verification",
+            model={
+                "context_message": messages.get(reason, messages["default"]),
+                "email": email,
+                "error": None,
+            },
+        )
+
+    @post("/resend-verification")
+    async def resend_verification_email(self, request: Request) -> Response:
+        """
+        Traiter le renvoi d'email de vérification
+        """
+        try:
+            # Lire les données du formulaire
+            form_data = await request.form()
+            email = form_data.get("email", "")
+
+            if not email:
+                return self.view(
+                    "resend_verification",
+                    model={
+                        "title": "Renvoyer l'email de vérification",
+                        "error": "L'email est requis",
+                    },
+                )
+
+            # Renvoyer l'email
+            email_sent = await self.user_service.resend_verification_email(email)
+
+            if not email_sent:
+                logger.error(f"Failed to send verification email to {email}")
+                return self.view(
+                    "resend_verification",
+                    model={
+                        "title": "Renvoyer l'email de vérification",
+                        "error": "Échec de l'envoi de l'email",
+                    },
+                )
+
+            logger.info(f"Verification email resent to: {email}")
+
+            return self.view(
+                "resend-success", model={"title": "Email renvoyé", "email": email}
+            )
+
+        except ValueError as e:
+            logger.warning(f"Resend verification failed: {str(e)}")
+            return self.view(
+                "resend_verification",
+                model={"title": "Renvoyer l'email de vérification", "error": str(e)},
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Resend verification failed - server error: {str(e)}", exc_info=True
+            )
+            return self.view(
+                "resend_verification",
+                model={
+                    "title": "Renvoyer l'email de vérification",
+                    "error": "Une erreur est survenue lors de l'envoi de l'email",
+                },
+            )
 
 
 class SessionController(Controller):
@@ -41,7 +249,7 @@ class SessionController(Controller):
         # Stocker dans la session
         request.session["_user_id"] = user_id
         request.session["username"] = username
-        request.session["authenticated_at"] = datetime.utcnow().isoformat()
+        request.session["authenticated_at"] = datetime.now(UTC).isoformat()
 
         return json(
             {
@@ -127,7 +335,7 @@ class SessionController(Controller):
         visit_count = request.session.get("visit_count", 0)
         visit_count += 1
         request.session["visit_count"] = visit_count
-        request.session["last_visit"] = datetime.utcnow().isoformat()
+        request.session["last_visit"] = datetime.now(UTC).isoformat()
 
         # Informations de la session actuelle
         session_id = request.session.get("_session_id", "Pas encore créé")
@@ -207,7 +415,7 @@ class SessionController(Controller):
             # Sessions actives (non expirées)
             active_result = await db.execute(
                 select(func.count(SessionModel.id)).where(
-                    SessionModel.expires_at > datetime.utcnow()
+                    SessionModel.expires_at > datetime.now(UTC)
                 )
             )
             active_sessions = active_result.scalar()

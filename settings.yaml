@@ -10,4 +10,20 @@ site:
 # Database Configuration
 database:
   url: "sqlite+aiosqlite:///app.db"
-  echo: false          # Mettre à True pour voir les requêtes SQL en développement
+  echo: false # Mettre à True pour voir les requêtes SQL en développement
+
+# Configuration pour la vérification des tokens
+verification:
+  token_expiry_delay: 3600
+  secret: "00a4143a557a3e00612d322eeb58f80d7e645df40d457b2976ae6fdd986c72ee"
+  base_url: "http://localhost:44777"
+
+#SMTP Configuration
+email:
+  smtp_host: localhost #"smtp.example.com"
+  smtp_port: 1025
+  smtp_username: null #"user@example.com"
+  smtp_password: null #"password"
+  from_email: "noreply@example.com"
+  from_name: "Example"
+  use_tls: False
