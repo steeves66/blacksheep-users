@@ -103,6 +103,41 @@ class EmailVerificationToken(Base):
         return not self.is_used and not self.is_expired()
 
 
+class PasswordResetToken(Base):
+    """
+    Token de réinitialisation de mot de passe avec expiration et suivi d'utilisation
+
+    Sécurité : Le token est stocké en base ET signé avec itsdangerous
+    - Base : permet de vérifier que le token existe et n'est pas réutilisé
+    - Signature : garantit que le token n'a pas été modifié
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token = Column(String(255), unique=True, index=True, nullable=False)
+    is_used = Column(Boolean, default=False, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+    # Relation avec User
+    user = relationship("User", backref="password_reset_tokens")
+
+    def __repr__(self):
+        return f"<PasswordResetToken(id={self.id}, user_id={self.user_id}, is_used={self.is_used})>"
+
+    def is_expired(self) -> bool:
+        """Vérifie si le token a expiré"""
+        return datetime.now(UTC) > self.expires_at
+
+    def is_valid(self) -> bool:
+        """Vérifie si le token est valide (non utilisé ET non expiré)"""
+        return not self.is_used and not self.is_expired()
+
+
 class Session(Base):
     """
     Modèle de session pour stockage en base de données.

@@ -9,12 +9,14 @@ https://github.com/Neoteroi/essentials-configuration
 
 https://docs.pydantic.dev/latest/usage/settings/
 """
+
 from blacksheep.server.env import get_env, is_development
 from config.common import Configuration, ConfigurationBuilder
 from config.env import EnvVars
 from config.user import UserSettings
 from config.yaml import YAMLFile
 from pydantic import BaseModel
+from typing import Optional
 
 
 class APIInfo(BaseModel):
@@ -36,11 +38,31 @@ class Database(BaseModel):
     echo: bool = False
 
 
+# Configuration pour la vérification des tokens
+class Verification(BaseModel):
+    token_expiry_delay: int
+    secret: str
+    base_url: str
+
+
+# SMTP Configuration
+class Email(BaseModel):
+    smtp_host: str
+    smtp_port: int
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    from_email: str
+    from_name: str
+    use_tls: bool
+
+
 class Settings(BaseModel):
     app: App
     info: APIInfo
     site: Site
     database: Database
+    email: Email
+    verification: Verification
 
 
 def default_configuration_builder() -> ConfigurationBuilder:

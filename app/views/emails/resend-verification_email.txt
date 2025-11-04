@@ -1,0 +1,19 @@
+<!-- app/email_templates/resend-verification_email.txt -->
+🔄 Nouveau lien de vérification
+
+Bonjour {{ username }},
+
+Vous avez demandé un nouveau lien de vérification pour votre compte.
+
+⚠️ NOTE IMPORTANTE : Ce nouveau lien remplace tous les liens précédents qui ne sont plus valides.
+
+Cliquez sur le lien ci-dessous pour activer votre compte :
+{{ verification_link }}
+
+💡 CONSEILS :
+- Ce lien expire dans 24 heures
+- Si vous n'avez pas demandé ce renvoi, ignorez cet email
+- Vérifiez votre dossier spam si vous ne trouvez pas nos emails
+
+---
+Cet email a été envoyé automatiquement, merci de ne pas y répondre.

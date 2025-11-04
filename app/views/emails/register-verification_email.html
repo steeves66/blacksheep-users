@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Vérification de votre compte</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css"
+            rel="stylesheet"
+        />
+
+        <style>
+            /* Reset et styles de base */
+            body {
+                margin: 0;
+                padding: 0;
+                font-family:
+                    "Inter",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    "Helvetica Neue",
+                    Arial,
+                    sans-serif;
+                background-color: #f3f4f6;
+            }
+
+            /* Container principal */
+            .email-wrapper {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: #f3f4f6;
+            }
+
+            .email-wrapper-cell {
+                padding: 40px 20px;
+            }
+
+            /* Card centrale */
+            .email-card {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+
+            /* Header avec gradient */
+            .email-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 40px 30px;
+                border-radius: 12px 12px 0 0;
+                text-align: center;
+            }
+
+            .icon-circle {
+                background-color: rgba(255, 255, 255, 0.2);
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .icon-circle svg {
+                width: 48px;
+                height: 48px;
+                color: #ffffff;
+            }
+
+            .email-title {
+                color: #ffffff;
+                font-size: 28px;
+                font-weight: 700;
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            /* Contenu principal */
+            .email-content {
+                padding: 40px 30px;
+            }
+
+            .greeting {
+                color: #1f2937;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 20px;
+            }
+
+            .main-text {
+                color: #4b5563;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 30px;
+            }
+
+            /* Bouton CTA */
+            .cta-wrapper {
+                width: 100%;
+                margin: 0 0 30px;
+            }
+
+            .cta-cell {
+                text-align: center;
+            }
+
+            .cta-button {
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: 600;
+                text-decoration: none;
+                padding: 16px 48px;
+                border-radius: 8px;
+                box-shadow:
+                    0 10px 15px -3px rgba(102, 126, 234, 0.4),
+                    0 4px 6px -2px rgba(102, 126, 234, 0.2);
+                transition: all 0.3s ease;
+            }
+
+            .cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow:
+                    0 15px 20px -3px rgba(102, 126, 234, 0.5),
+                    0 6px 8px -2px rgba(102, 126, 234, 0.3);
+            }
+
+            /* Texte alternatif et lien */
+            .alt-text {
+                color: #6b7280;
+                font-size: 14px;
+                line-height: 1.6;
+                margin: 0 0 20px;
+            }
+
+            .link-box {
+                background-color: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                padding: 12px;
+                margin: 0 0 30px;
+                word-break: break-all;
+            }
+
+            .link-box a {
+                color: #667eea;
+                font-size: 14px;
+                text-decoration: none;
+            }
+
+            /* Alerte sécurité */
+            .security-alert {
+                background-color: #fef3c7;
+                border-left: 4px solid #f59e0b;
+                padding: 16px;
+                border-radius: 6px;
+                margin: 0 0 30px;
+            }
+
+            .alert-flex {
+                display: flex;
+                align-items: start;
+            }
+
+            .alert-icon {
+                width: 20px;
+                height: 20px;
+                color: #f59e0b;
+                margin-right: 12px;
+                flex-shrink: 0;
+            }
+
+            .alert-title {
+                color: #92400e;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 0 4px;
+            }
+
+            .alert-text {
+                color: #92400e;
+                font-size: 13px;
+                margin: 0;
+                line-height: 1.5;
+            }
+
+            /* Message de clôture */
+            .closing-text {
+                color: #4b5563;
+                font-size: 15px;
+                line-height: 1.6;
+                margin: 0 0 10px;
+            }
+
+            .signature {
+                color: #1f2937;
+                font-size: 15px;
+                font-weight: 600;
+                margin: 0;
+            }
+
+            /* Divider */
+            .divider-cell {
+                padding: 0 30px;
+            }
+
+            .divider {
+                height: 1px;
+                background-color: #e5e7eb;
+            }
+
+            /* Footer */
+            .email-footer {
+                padding: 30px;
+                text-align: center;
+                background-color: #f9fafb;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .social-links {
+                margin: 0 0 20px;
+            }
+
+            .social-link {
+                display: inline-block;
+                margin: 0 8px;
+                text-decoration: none;
+            }
+
+            .social-icon {
+                width: 36px;
+                height: 36px;
+                background-color: #667eea;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .social-icon span {
+                color: #ffffff;
+                font-size: 16px;
+            }
+
+            .social-icon:hover {
+                background-color: #764ba2;
+                transform: scale(1.1);
+                transition: all 0.3s ease;
+            }
+
+            .footer-copyright {
+                color: #6b7280;
+                font-size: 12px;
+                line-height: 1.6;
+                margin: 0 0 8px;
+            }
+
+            .footer-disclaimer {
+                color: #9ca3af;
+                font-size: 11px;
+                line-height: 1.5;
+                margin: 0 0 12px;
+            }
+
+            .footer-links {
+                margin: 12px 0 0;
+            }
+
+            .footer-links a {
+                color: #667eea;
+                font-size: 12px;
+                text-decoration: none;
+                margin: 0 10px;
+            }
+
+            .footer-links a:hover {
+                color: #764ba2;
+                text-decoration: underline;
+            }
+
+            .footer-separator {
+                color: #d1d5db;
+            }
+
+            /* Responsive */
+            @media only screen and (max-width: 600px) {
+                .email-wrapper-cell {
+                    padding: 20px 10px;
+                }
+
+                .email-header {
+                    padding: 30px 20px;
+                }
+
+                .email-content {
+                    padding: 30px 20px;
+                }
+
+                .email-title {
+                    font-size: 24px;
+                }
+
+                .cta-button {
+                    padding: 14px 32px;
+                    font-size: 15px;
+                }
+
+                .email-footer {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Container principal -->
+        <table role="presentation" class="email-wrapper">
+            <tr>
+                <td class="email-wrapper-cell">
+                    <!-- Card centrale -->
+                    <table role="presentation" class="email-card">
+                        <!-- Header avec gradient -->
+                        <tr>
+                            <td class="email-header">
+                                <div class="icon-circle">
+                                    <svg
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <h1 class="email-title">
+                                    Vérifiez votre email
+                                </h1>
+                            </td>
+                        </tr>
+
+                        <!-- Contenu principal -->
+                        <tr>
+                            <td class="email-content">
+                                <!-- Salutation -->
+                                <p class="greeting">
+                                    Bonjour
+                                    <strong
+                                        >{{ username or 'cher utilisateur'
+                                        }}</strong
+                                    >,
+                                </p>
+
+                                <!-- Message principal -->
+                                <p class="main-text">
+                                    Merci de vous être inscrit ! Pour activer
+                                    votre compte et commencer à utiliser nos
+                                    services, veuillez confirmer votre adresse
+                                    email en cliquant sur le bouton ci-dessous.
+                                </p>
+
+                                <!-- Bouton CTA -->
+                                <table role="presentation" class="cta-wrapper">
+                                    <tr>
+                                        <td class="cta-cell">
+                                            <a
+                                                href="{{ verification_link }}"
+                                                class="cta-button"
+                                            >
+                                                ✓ Vérifier mon compte
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- Texte alternatif -->
+                                <p class="alt-text">
+                                    Si le bouton ne fonctionne pas, copiez et
+                                    collez ce lien dans votre navigateur :
+                                </p>
+
+                                <!-- Lien en clair -->
+                                <div class="link-box">
+                                    <a href="{{ verification_link }}"
+                                        >{{ verification_link }}</a
+                                    >
+                                </div>
+
+                                <!-- Alerte sécurité -->
+                                <div class="security-alert">
+                                    <div class="alert-flex">
+                                        <svg
+                                            class="alert-icon"
+                                            fill="currentColor"
+                                            viewBox="0 0 20 20"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                clip-rule="evenodd"
+                                            ></path>
+                                        </svg>
+                                        <div>
+                                            <p class="alert-title">
+                                                ⏱️ Ce lien expire dans 24 heures
+                                            </p>
+                                            <p class="alert-text">
+                                                Pour votre sécurité, ce lien de
+                                                vérification n'est valable que
+                                                pendant 24 heures. Si vous ne
+                                                l'avez pas demandé, vous pouvez
+                                                ignorer cet email en toute
+                                                sécurité.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Message de clôture -->
+                                <p class="closing-text">À très bientôt,</p>
+                                <p class="signature">
+                                    L'équipe BlackSheep Apps
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Divider -->
+                        <tr>
+                            <td class="divider-cell">
+                                <div class="divider"></div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td class="email-footer">
+                                <!-- Liens sociaux -->
+                                <div class="social-links">
+                                    <a href="#" class="social-link">
+                                        <div class="social-icon">
+                                            <span>f</span>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="social-link">
+                                        <div class="social-icon">
+                                            <span>𝕏</span>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="social-link">
+                                        <div class="social-icon">
+                                            <span>in</span>
+                                        </div>
+                                    </a>
+                                </div>
+
+                                <!-- Informations légales -->
+                                <p class="footer-copyright">
+                                    © 2024 BlackSheep Apps. Tous droits
+                                    réservés.
+                                </p>
+                                <p class="footer-disclaimer">
+                                    Vous recevez cet email car vous vous êtes
+                                    inscrit sur notre plateforme.<br />
+                                    Si vous n'êtes pas à l'origine de cette
+                                    inscription, ignorez simplement ce message.
+                                </p>
+
+                                <!-- Liens footer -->
+                                <div class="footer-links">
+                                    <a href="#">Aide</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Confidentialité</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Conditions</a>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    </body>
+</html>

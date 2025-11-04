@@ -8,7 +8,12 @@ from alembic import context
 from model.base import Base
 from app.settings import Settings
 
-from model.user import User, EmailVerificationToken, Session  # Importer le modèle pour l'enregistrement des métadonnées
+from model.user import (
+    User,
+    EmailVerificationToken,
+    Session,
+    PasswordResetToken,
+)  # Importer le modèle pour l'enregistrement des métadonnées
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

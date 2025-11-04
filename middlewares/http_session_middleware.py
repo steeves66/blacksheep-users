@@ -12,7 +12,7 @@ from dbsession import AsyncSessionLocal
 from model.user import Session as SessionModel
 
 
-class DatabaseSessionStore(SessionStore):
+class HttpSessionStoreMiddleware(SessionStore):
     """
     SessionStore avec persistance en base de données.
 

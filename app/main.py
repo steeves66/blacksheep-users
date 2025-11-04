@@ -15,8 +15,12 @@ from app.errors import configure_error_handlers
 from app.services import configure_services
 from app.settings import Settings
 from app.templating import configure_templating
+from blacksheepsqlalchemy import use_sqlalchemy
 
-from app.middlewares.session_database_store import DatabaseSessionStore
+from domain.email_service import EmailService
+from domain.user_service import UserService
+from repositories.user_repository import UserRepository
+from middlewares.http_session_middleware import HttpSessionStoreMiddleware
 
 
 def configure_application(
@@ -26,7 +30,7 @@ def configure_application(
     app = Application(services=services)
 
     # Configuration des sessions EN PREMIER
-    session_store = DatabaseSessionStore(
+    session_store = HttpSessionStoreMiddleware(
         cookie_name="session_id",
         session_max_age=86400,  # 24h authentifiés
         anonymous_max_age=3600,  # 1h anonymes
@@ -38,6 +42,16 @@ def configure_application(
     app.use_sessions(session_store)
 
     # app.middlewares.append(get_trailing_slash_middleware())
+
+    # Configure DI for sqlalchemy session
+    use_sqlalchemy(
+        app, connection_string=settings.database.url, echo=settings.database.echo
+    )
+
+    # Add domain services for DI
+    app.services.add_transient(EmailService)
+    app.services.add_scoped(UserRepository)
+    app.services.add_scoped(UserService)
 
     app.serve_files("app/static")
     configure_error_handlers(app)

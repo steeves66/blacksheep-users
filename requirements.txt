@@ -1,5 +1,6 @@
 annotated-types==0.7.0
 arrow==1.4.0
+bcrypt==4.2.1
 binaryornot==0.4.4
 blacksheep==2.4.3
 blacksheep-cli==0.0.5
