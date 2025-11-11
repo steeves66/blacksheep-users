@@ -9,7 +9,6 @@ Champs principaux :
 - dates : suivi de création et modification
 """
 
-from typing import Optional
 from datetime import datetime, UTC, timedelta
 from sqlalchemy import (
     Column,
@@ -209,3 +208,45 @@ class Session(Base):
             "user_agent": self.user_agent,
             "is_expired": self.is_expired(),
         }
+
+
+"""
+Modèle pour le Rate Limiting - Limite les requêtes par utilisateur
+"""
+
+
+class RateLimit(Base):
+    """
+    Suivi des requêtes pour le rate limiting
+
+    Chaque entrée représente une tentative de requête.
+    On compte les tentatives dans une fenêtre de temps pour limiter les abus.
+    """
+
+    __tablename__ = "rate_limits"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Identifiant unique (IP + endpoint ou user_id + endpoint)
+    identifier = Column(String(255), nullable=False, index=True)
+
+    # Endpoint concerné (ex: "/users/register", "/users/login")
+    endpoint = Column(String(255), nullable=False)
+
+    # Timestamp de la tentative
+    attempted_at = Column(
+        DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True
+    )
+
+    # Informations additionnelles
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    # Index composites pour performances
+    __table_args__ = (
+        Index("idx_identifier_endpoint_time", "identifier", "endpoint", "attempted_at"),
+        Index("idx_endpoint_time", "endpoint", "attempted_at"),
+    )
+
+    def __repr__(self):
+        return f"<RateLimit(id={self.id}, identifier='{self.identifier}', endpoint='{self.endpoint}')>"

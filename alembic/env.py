@@ -13,6 +13,7 @@ from model.user import (
     EmailVerificationToken,
     Session,
     PasswordResetToken,
+    RateLimit,
 )  # Importer le modèle pour l'enregistrement des métadonnées
 
 # this is the Alembic Config object, which provides

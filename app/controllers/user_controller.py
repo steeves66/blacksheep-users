@@ -1,8 +1,5 @@
-from time import timezone
-from blacksheep import Request, Response, FromForm, redirect, json
+from blacksheep import Request, Response, redirect, json, text
 from blacksheep.server.controllers import Controller, get, post
-from blacksheep.server.bindings import FromServices
-from itsdangerous import SignatureExpired, BadSignature
 import logging
 from urllib.parse import urlencode
 
@@ -10,6 +7,10 @@ from datetime import datetime, UTC
 from typing import Optional
 
 from domain.user_service import UserService
+from decorators.rate_limiter import (
+    rate_limit_login,
+    rate_limit_email,
+)
 
 
 """
@@ -174,6 +175,7 @@ class Users(Controller):
             },
         )
 
+    @rate_limit_email()  # 🔥 3 tentatives / 1h
     @post("/resend-verification")
     async def resend_verification_email(self, request: Request) -> Response:
         """
@@ -238,6 +240,7 @@ class Users(Controller):
             "login_view", model={"title": "Connexion", "error": None, "identifier": ""}
         )
 
+    @rate_limit_login()  # 🔥 5 tentatives / 15 min
     @post("/login")
     async def login(self, request: Request) -> Response:
         """
@@ -485,6 +488,39 @@ class Users(Controller):
                 },
             )
 
+    """
+    Route admin pour déboguer
+    Ajoutez une route pour voir les stats (à protéger en production) :
+    """
+
+    @get("/admin/rate-limits")
+    async def admin_rate_limits(self, request: Request) -> Response:
+        """Voir les dernières tentatives (admin uniquement)"""
+        from dbsession import AsyncSessionLocal
+        from model.rate_limit import RateLimit
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(RateLimit).order_by(RateLimit.attempted_at.desc()).limit(50)
+            )
+            attempts = result.scalars().all()
+
+            data = [
+                {
+                    "id": a.id,
+                    "identifier": a.identifier,
+                    "endpoint": a.endpoint,
+                    "ip": a.ip_address,
+                    "time": a.attempted_at.isoformat(),
+                }
+                for a in attempts
+            ]
+
+            from blacksheep import json as json_response
+
+            return json_response(data)
+
 
 class SessionController(Controller):
     """Contrôleur de test des sessions."""
@@ -508,29 +544,29 @@ class SessionController(Controller):
 
         return text(session["example"])
 
-    @post("/login")
-    async def login(self, request: Request):
-        """Login utilisateur."""
-        data = await request.json()
-        username = data.get("username")
+    # @post("/login")
+    # async def login(self, request: Request):
+    #     """Login utilisateur."""
+    #     data = await request.json()
+    #     username = data.get("username")
 
-        if not username:
-            return json({"error": "Username requis"}, status=400)
+    #     if not username:
+    #         return json({"error": "Username requis"}, status=400)
 
-        # Simuler authentification
-        user_id = hash(username) % 10000
+    #     # Simuler authentification
+    #     user_id = hash(username) % 10000
 
-        # Stocker dans la session
-        request.session["_user_id"] = user_id
-        request.session["username"] = username
-        request.session["authenticated_at"] = datetime.now(UTC).isoformat()
+    #     # Stocker dans la session
+    #     request.session["_user_id"] = user_id
+    #     request.session["username"] = username
+    #     request.session["authenticated_at"] = datetime.now(UTC).isoformat()
 
-        return json(
-            {
-                "message": f"Connecté en tant que {username}",
-                "user_id": user_id,
-            }
-        )
+    #     return json(
+    #         {
+    #             "message": f"Connecté en tant que {username}",
+    #             "user_id": user_id,
+    #         }
+    #     )
 
     @post("/logout")
     async def logout(self, request: Request):
