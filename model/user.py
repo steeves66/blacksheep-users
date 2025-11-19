@@ -9,16 +9,17 @@ Champs principaux :
 - dates : suivi de création et modification
 """
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
+    JSON,
     Boolean,
+    Column,
     DateTime,
     ForeignKey,
     Index,
-    JSON,
+    Integer,
+    String,
     Table,
     Text,
     UniqueConstraint,
@@ -26,7 +27,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from model.base import Base
-
 
 # model for RABC functionality
 user_roles = Table(

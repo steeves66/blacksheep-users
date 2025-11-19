@@ -55,19 +55,6 @@ class Users(Controller):
         """Nom de la classe pour la génération automatique des routes"""
         return "users"
 
-    # Simple register without sending email verification
-    @get("/register/view/simple")
-    async def register_simple_view(self, request: Request) -> Response:
-        return self.view(
-            "admin/add_user",
-            model={
-                "title": "Ajouter un utilisateur",
-                "error": None,
-                "success": None,
-                "form_data": {},
-            },
-        )
-
     # @require_role("admin")
     @get("/register/view")
     async def register_view(self) -> Response:
@@ -76,8 +63,8 @@ class Users(Controller):
         """
         return self.view(model={"title": "Inscription", "error": None, "form_data": {}})
 
-    @rate_limit(limit=5, per_seconds=3600, scope="register")
     @post("/register")
+    @rate_limit(limit=5, per_seconds=3600, scope="register")
     async def create_user(self, request: Request) -> Response:
         form_data = await request.form()
 

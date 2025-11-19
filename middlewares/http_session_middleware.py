@@ -81,7 +81,7 @@ class HttpSessionStoreMiddleware(SessionStore):
                 if expires_at.tzinfo is None:
                     # Si naive, on suppose UTC
                     expires_at = expires_at.replace(tzinfo=UTC)
-                
+
                 if expires_at < datetime.now(UTC):
                     await db.delete(db_session)
                     await db.commit()

@@ -13,25 +13,25 @@ Avantages :
 - Maintenance : changement de DB sans toucher aux services
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, select, delete, func
-from sqlalchemy.orm import selectinload
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional, Tuple
+
+from sqlalchemy import and_, delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.settings import Settings
 from model.user import (
-    User,
     EmailVerificationToken,
     PasswordResetToken,
-    Role,
     Permission,
+    Role,
+    User,
+    role_permissions,
     user_permissions,
     user_roles,
-    role_permissions,
 )
-
 
 logger = logging.getLogger(__name__)
 

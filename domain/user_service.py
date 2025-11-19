@@ -15,21 +15,21 @@ Ne fait PAS :
 """
 
 import asyncio
-import bcrypt
-from typing import Optional, Tuple, List, Dict, Any
-from secrets import token_urlsafe
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from model.user import User, Role, Permission
+import logging
 
 # from passlib.hash import bcrypt
 from dataclasses import dataclass
-import logging
 from datetime import datetime, timedelta, timezone
+from secrets import token_urlsafe
+from typing import Any, Dict, List, Optional, Tuple
 
-from repositories.user_repository import UserRepository
-from domain.email_service import EmailService
+import bcrypt
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+
 from app.settings import Settings
-
+from domain.email_service import EmailService
+from model.user import Permission, Role, User
+from repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 

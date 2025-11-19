@@ -11,11 +11,13 @@ Avantages :
 - Meilleure testabilité
 """
 
-from functools import wraps
-from typing import List, Callable, Optional
-from blacksheep import Request, Response, redirect, json as json_response
 import logging
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
+from functools import wraps
+from typing import Callable, List, Optional
+
+from blacksheep import Request, Response, redirect
+from blacksheep import json as json_response
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +51,9 @@ async def get_user_with_rbac(request: Request):
     if not user_id:
         return None
 
+    from app.settings import load_settings
     from dbsession import AsyncSessionLocal
     from repositories.user_repository import UserRepository
-    from app.settings import load_settings
 
     settings = load_settings()
 
@@ -75,9 +77,9 @@ async def check_user_has_role(request: Request, role_name: str) -> bool:
     if not user_id:
         return False
 
+    from app.settings import load_settings
     from dbsession import AsyncSessionLocal
     from repositories.user_repository import UserRepository
-    from app.settings import load_settings
 
     settings = load_settings()
 
@@ -97,9 +99,9 @@ async def check_user_has_permission(request: Request, permission_name: str) -> b
     if not user_id:
         return False
 
+    from app.settings import load_settings
     from dbsession import AsyncSessionLocal
     from repositories.user_repository import UserRepository
-    from app.settings import load_settings
 
     settings = load_settings()
 
@@ -224,8 +226,9 @@ async def _check_rate_limit(
             - allowed = False => il faut retourner `response` (429)
             - allowed = True  => continuer le handler
     """
+    from sqlalchemy import func, select
+
     from dbsession import AsyncSessionLocal
-    from sqlalchemy import select, func
     from model.user import RateLimit
 
     identifier, endpoint = _build_rate_limit_identifier(request, by=by)
