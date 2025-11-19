@@ -19,10 +19,79 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     JSON,
+    Table,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
 from model.base import Base
+
+
+# model for RABC functionality
+user_roles = Table(
+    "user_roles",
+    Base.metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    ),
+    Column(
+        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False
+    ),
+    Column("assigned_at", DateTime, default=lambda: datetime.now(UTC)),
+    Column(
+        "assigned_by",
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    UniqueConstraint("user_id", "role_id", name="uq_user_role"),
+)
+
+# Table de liaison Role <-> Permission
+role_permissions = Table(
+    "role_permissions",
+    Base.metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False
+    ),
+    Column(
+        "permission_id",
+        Integer,
+        ForeignKey("permissions.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("assigned_at", DateTime, default=lambda: datetime.now(UTC)),
+    UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
+)
+
+# ⭐ NOUVEAU : Table de liaison User <-> Permission (permissions directes)
+user_permissions = Table(
+    "user_permissions",
+    Base.metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    ),
+    Column(
+        "permission_id",
+        Integer,
+        ForeignKey("permissions.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("assigned_at", DateTime, default=lambda: datetime.now(UTC)),
+    Column(
+        "assigned_by",
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    Column("expires_at", DateTime, nullable=True),  # Permission temporaire (optionnel)
+    Column("reason", Text, nullable=True),  # Raison de l'attribution (audit)
+    UniqueConstraint("user_id", "permission_id", name="uq_user_permission"),
+)
 
 
 class User(Base):
@@ -52,6 +121,24 @@ class User(Base):
         cascade="all, delete-orphan",  # Supprimer les sessions si user supprimé
     )
 
+    # Relations RBAC
+    roles = relationship(
+        "Role",
+        secondary=user_roles,
+        back_populates="users",
+        lazy="selectin",
+        foreign_keys=[user_roles.c.user_id, user_roles.c.role_id],
+    )
+
+    # ⭐ NOUVEAU : Permissions directes
+    direct_permissions = relationship(
+        "Permission",
+        secondary=user_permissions,
+        back_populates="users",
+        lazy="selectin",
+        foreign_keys=[user_permissions.c.user_id, user_permissions.c.permission_id],
+    )
+
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', is_active={self.is_active})>"
 
@@ -66,7 +153,89 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
+    # ==========================================
+    # MÉTHODES RBAC
+    # ==========================================
 
+    def has_role(self, role_name: str) -> bool:
+        """Vérifie si l'utilisateur a un rôle spécifique"""
+        return any(role.name == role_name for role in self.roles)
+
+    def has_permission(self, permission_name: str) -> bool:
+        """
+        Vérifie si l'utilisateur a une permission spécifique
+
+        Recherche dans :
+        1. Les permissions directes de l'utilisateur (user_permissions)
+        2. Les permissions héritées des rôles de l'utilisateur
+
+        Returns:
+            True si l'utilisateur a la permission (directe ou via un rôle)
+        """
+        # 1. Vérifier les permissions directes
+        for permission in self.direct_permissions:
+            if permission.name == permission_name:
+                # Vérifier l'expiration si applicable
+                if hasattr(permission, "expires_at") and permission.expires_at:
+                    if permission.expires_at < datetime.now(UTC):
+                        continue  # Permission expirée
+                return True
+
+        # 2. Vérifier les permissions via les rôles
+        for role in self.roles:
+            if role.has_permission(permission_name):
+                return True
+
+        return False
+
+    def get_highest_role(self):
+        """Retourne le rôle avec la priorité la plus élevée"""
+        if not self.roles:
+            return None
+        return max(self.roles, key=lambda r: r.priority)
+
+    def get_all_permissions(self) -> set:
+        """
+        Retourne toutes les permissions de l'utilisateur
+
+        Combine :
+        - Les permissions directes (user_permissions)
+        - Les permissions héritées des rôles
+
+        Returns:
+            Set de noms de permissions (dédupliqué)
+        """
+        permissions = set()
+
+        # Permissions directes
+        for perm in self.direct_permissions:
+            # Vérifier l'expiration
+            if hasattr(perm, "expires_at") and perm.expires_at:
+                if perm.expires_at < datetime.now(UTC):
+                    continue  # Permission expirée
+            permissions.add(perm.name)
+
+        # Permissions via rôles
+        for role in self.roles:
+            for perm in role.permissions:
+                permissions.add(perm.name)
+
+        return permissions
+
+    def get_direct_permissions(self) -> list:
+        """Retourne uniquement les permissions directes (sans celles des rôles)"""
+        return [perm.name for perm in self.direct_permissions]
+
+    def get_role_permissions(self) -> set:
+        """Retourne uniquement les permissions héritées des rôles"""
+        permissions = set()
+        for role in self.roles:
+            for perm in role.permissions:
+                permissions.add(perm.name)
+        return permissions
+
+
+# Functionality for register with email verification
 class EmailVerificationToken(Base):
     """
     Token de vérification email avec expiration et suivi d'utilisation
@@ -102,6 +271,7 @@ class EmailVerificationToken(Base):
         return not self.is_used and not self.is_expired()
 
 
+# Functionality for reset password with email
 class PasswordResetToken(Base):
     """
     Token de réinitialisation de mot de passe avec expiration et suivi d'utilisation
@@ -137,6 +307,7 @@ class PasswordResetToken(Base):
         return not self.is_used and not self.is_expired()
 
 
+# Functionality for session management
 class Session(Base):
     """
     Modèle de session pour stockage en base de données.
@@ -183,7 +354,11 @@ class Session(Base):
 
     def is_expired(self) -> bool:
         """Vérifie si la session est expirée"""
-        return datetime.now(UTC) > self.expires_at
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            # Si naive, on suppose UTC
+            expires_at = expires_at.replace(tzinfo=UTC)
+        return datetime.now(UTC) > expires_at
 
     def extend_expiration(self, seconds: int = 3600) -> None:
         """
@@ -210,11 +385,7 @@ class Session(Base):
         }
 
 
-"""
-Modèle pour le Rate Limiting - Limite les requêtes par utilisateur
-"""
-
-
+# Modèle pour le Rate Limiting - Limite les requêtes par utilisateur
 class RateLimit(Base):
     """
     Suivi des requêtes pour le rate limiting
@@ -250,3 +421,142 @@ class RateLimit(Base):
 
     def __repr__(self):
         return f"<RateLimit(id={self.id}, identifier='{self.identifier}', endpoint='{self.endpoint}')>"
+
+
+# ==========================================
+# MODÈLE ROLE
+# ==========================================
+
+
+class Role(Base):
+    """
+    Modèle pour les rôles utilisateurs
+
+    Exemples de rôles :
+    - super_admin : Accès complet au système
+    - admin : Administration générale
+    - moderator : Modération du contenu
+    - user : Utilisateur standard
+    - guest : Utilisateur invité (lecture seule)
+    """
+
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Nom du rôle (unique, slug-friendly)
+    name = Column(String(50), unique=True, nullable=False, index=True)
+
+    # Nom d'affichage
+    display_name = Column(String(100), nullable=False)
+
+    # Description du rôle
+    description = Column(Text, nullable=True)
+
+    # Rôle système (ne peut pas être supprimé)
+    is_system = Column(Boolean, default=False, nullable=False)
+
+    # Rôle par défaut (assigné automatiquement aux nouveaux utilisateurs)
+    is_default = Column(Boolean, default=False, nullable=False)
+
+    # Priorité/Niveau du rôle (plus le nombre est élevé, plus le rôle est important)
+    priority = Column(Integer, default=0, nullable=False, index=True)
+
+    # Métadonnées
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    # Relations
+    permissions = relationship(
+        "Permission",
+        secondary=role_permissions,
+        back_populates="roles",
+        lazy="selectin",
+        foreign_keys=[role_permissions.c.role_id, role_permissions.c.permission_id],
+    )
+
+    users = relationship(
+        "User",
+        secondary=user_roles,
+        back_populates="roles",
+        lazy="dynamic",
+        foreign_keys=[user_roles.c.user_id, user_roles.c.role_id],
+    )
+
+    def __repr__(self):
+        return f"<Role(id={self.id}, name='{self.name}', priority={self.priority})>"
+
+    def has_permission(self, permission_name: str) -> bool:
+        """Vérifie si ce rôle a une permission spécifique"""
+        return any(perm.name == permission_name for perm in self.permissions)
+
+
+# ==========================================
+# MODÈLE PERMISSION
+# ==========================================
+
+
+class Permission(Base):
+    """
+    Modèle pour les permissions
+
+    Convention de nommage : resource.action
+    Exemples :
+    - user.create, user.read, user.update, user.delete
+    - post.publish
+    - comment.moderate
+    - settings.manage
+    """
+
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Nom de la permission (unique, format : resource.action)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+
+    # Nom d'affichage
+    display_name = Column(String(100), nullable=False)
+
+    # Description
+    description = Column(Text, nullable=True)
+
+    # Catégorie/Ressource (pour regrouper dans l'UI)
+    resource = Column(String(50), nullable=False, index=True)
+
+    # Action
+    action = Column(String(50), nullable=False)
+
+    # Permission système (ne peut pas être supprimée)
+    is_system = Column(Boolean, default=False, nullable=False)
+
+    # Métadonnées
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    # Relations
+    roles = relationship(
+        "Role", secondary=role_permissions, back_populates="permissions", lazy="dynamic"
+    )
+
+    # ⭐ NOUVEAU : Relation avec les utilisateurs (permissions directes)
+    users = relationship(
+        "User",
+        secondary=user_permissions,
+        back_populates="direct_permissions",
+        lazy="dynamic",
+        foreign_keys=[user_permissions.c.user_id, user_permissions.c.permission_id],
+    )
+
+    def __repr__(self):
+        return f"<Permission(id={self.id}, name='{self.name}')>"

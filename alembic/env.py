@@ -14,6 +14,8 @@ from model.user import (
     Session,
     PasswordResetToken,
     RateLimit,
+    Role,
+    Permission,
 )  # Importer le modèle pour l'enregistrement des métadonnées
 
 # this is the Alembic Config object, which provides
@@ -49,8 +51,13 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    # url = config.get_main_option("sqlalchemy.url")
+    # Convertir l'URL async en URL sync pour Alembic
     url = Settings.database.url
+    if url.startswith("sqlite+aiosqlite://"):
+        url = url.replace("sqlite+aiosqlite://", "sqlite://")
+    elif url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql://")
+    
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -69,8 +76,19 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Convertir l'URL async en URL sync pour Alembic
+    url = Settings.database.url
+    if url.startswith("sqlite+aiosqlite://"):
+        url = url.replace("sqlite+aiosqlite://", "sqlite://")
+    elif url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql://")
+    
+    # Utiliser l'URL convertie
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = url
+    
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

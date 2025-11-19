@@ -1,12 +1,12 @@
-import secrets
 import json
-from datetime import datetime, timedelta
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import select, delete
 from blacksheep import Request, Response
 from blacksheep.cookies import Cookie, CookieSameSiteMode
-from blacksheep.sessions.abc import SessionStore, Session
+from blacksheep.sessions.abc import Session, SessionStore
+from sqlalchemy import delete, select
 
 from dbsession import AsyncSessionLocal
 from model.user import Session as SessionModel
@@ -76,21 +76,27 @@ class HttpSessionStoreMiddleware(SessionStore):
                 if not db_session:
                     return Session()
 
-                # Vérifier l'expiration
-                if db_session.expires_at < datetime.utcnow():
+                # Vérifier l'expiration (gérer les datetimes naive/aware)
+                expires_at = db_session.expires_at
+                if expires_at.tzinfo is None:
+                    # Si naive, on suppose UTC
+                    expires_at = expires_at.replace(tzinfo=UTC)
+                
+                if expires_at < datetime.now(UTC):
                     await db.delete(db_session)
                     await db.commit()
                     return Session()
 
-                # Charger et retourner les données
-                data = json.loads(db_session.data)
+                data = (
+                    db_session.data
+                    if isinstance(db_session.data, dict)
+                    else json.loads(db_session.data or "{}")
+                )
                 data["_session_id"] = db_session.id
                 data["_user_id"] = db_session.user_id
 
-                # Créer l'objet Session avec les données
-                session = Session()
-                session.update(data)
-                return session
+                # Créer l'objet Session sans marquer modified=True
+                return Session(data)
 
         except Exception as e:
             print(f"Error loading session: {e}")
@@ -110,12 +116,7 @@ class HttpSessionStoreMiddleware(SessionStore):
             response: La réponse HTTP
             session: Objet Session contenant les données à sauvegarder
         """
-        # Extraire les données de manière sûre
-        session_data = {}
-        if hasattr(session, "_values"):
-            session_data = (
-                session._values.copy() if isinstance(session._values, dict) else {}
-            )
+        session_data = session.to_dict()
 
         if not session_data:
             print("DEBUG: session_data is empty, returning")
@@ -136,8 +137,8 @@ class HttpSessionStoreMiddleware(SessionStore):
 
         # Calculer l'expiration
         max_age = self.session_max_age if user_id else self.anonymous_max_age
-        expires_at = datetime.utcnow() + timedelta(seconds=max_age)
-        now = datetime.utcnow()
+        expires_at = datetime.now(UTC) + timedelta(seconds=max_age)
+        now = datetime.now(UTC)
 
         # Préparer les données à sauvegarder (exclure les métadonnées internes)
         data_to_save = {

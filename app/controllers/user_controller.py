@@ -1,17 +1,13 @@
-from blacksheep import Request, Response, redirect, json, text
-from blacksheep.server.controllers import Controller, get, post
 import logging
+from datetime import UTC, datetime
+from typing import Optional
 from urllib.parse import urlencode
 
-from datetime import datetime, UTC
-from typing import Optional
+from blacksheep import Request, Response, json, redirect, text
+from blacksheep.server.controllers import Controller, get, post
 
 from domain.user_service import UserService
-from decorators.rate_limiter import (
-    rate_limit_login,
-    rate_limit_email,
-)
-
+from helpers.decorators import rate_limit, require_role
 
 """
 UserController - Contrôleur MVC pour la gestion des utilisateurs avec BlackSheep
@@ -59,6 +55,20 @@ class Users(Controller):
         """Nom de la classe pour la génération automatique des routes"""
         return "users"
 
+    # Simple register without sending email verification
+    @get("/register/view/simple")
+    async def register_simple_view(self, request: Request) -> Response:
+        return self.view(
+            "admin/add_user",
+            model={
+                "title": "Ajouter un utilisateur",
+                "error": None,
+                "success": None,
+                "form_data": {},
+            },
+        )
+
+    # @require_role("admin")
     @get("/register/view")
     async def register_view(self) -> Response:
         """
@@ -66,6 +76,7 @@ class Users(Controller):
         """
         return self.view(model={"title": "Inscription", "error": None, "form_data": {}})
 
+    @rate_limit(limit=5, per_seconds=3600, scope="register")
     @post("/register")
     async def create_user(self, request: Request) -> Response:
         form_data = await request.form()
@@ -175,7 +186,6 @@ class Users(Controller):
             },
         )
 
-    @rate_limit_email()  # 🔥 3 tentatives / 1h
     @post("/resend-verification")
     async def resend_verification_email(self, request: Request) -> Response:
         """
@@ -240,8 +250,8 @@ class Users(Controller):
             "login_view", model={"title": "Connexion", "error": None, "identifier": ""}
         )
 
-    @rate_limit_login()  # 🔥 5 tentatives / 15 min
     @post("/login")
+    @rate_limit(limit=5, per_seconds=300, scope="login")
     async def login(self, request: Request) -> Response:
         """
         Traiter la connexion d'un utilisateur
@@ -351,6 +361,7 @@ class Users(Controller):
         )
 
     @post("/forgot-password")
+    @rate_limit(limit=3, per_seconds=900, scope="forgot-password")
     async def forgot_password(self, request: Request) -> Response:
         """Traiter la demande de réinitialisation"""
         try:
@@ -496,9 +507,10 @@ class Users(Controller):
     @get("/admin/rate-limits")
     async def admin_rate_limits(self, request: Request) -> Response:
         """Voir les dernières tentatives (admin uniquement)"""
-        from dbsession import AsyncSessionLocal
-        from model.rate_limit import RateLimit
         from sqlalchemy import select
+
+        from dbsession import AsyncSessionLocal
+        from model.user import RateLimit
 
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -628,6 +640,7 @@ class SessionController(Controller):
         )
 
     @get("/session/test")
+    @rate_limit(limit=10, per_seconds=60, by="ip", scope="session-test")
     async def test_session_persistence(self, request: Request):
         """
         Route de test pour vérifier la persistance des sessions.
@@ -637,9 +650,10 @@ class SessionController(Controller):
         - Compteur de visites
         - Vérification en DB
         """
+        from sqlalchemy import select
+
         from dbsession import AsyncSessionLocal
         from model.user import Session as SessionModel
-        from sqlalchemy import select
 
         # Récupérer ou initialiser le compteur
         visit_count = request.session.get("visit_count", 0)
@@ -702,9 +716,10 @@ class SessionController(Controller):
     @get("/session/stats")
     async def session_stats(self, request: Request):
         """Statistiques globales des sessions en DB."""
+        from sqlalchemy import func, select
+
         from dbsession import AsyncSessionLocal
         from model.user import Session as SessionModel
-        from sqlalchemy import select, func
 
         async with AsyncSessionLocal() as db:
             # Nombre total de sessions

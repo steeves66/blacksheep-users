@@ -16,14 +16,15 @@ Ne fait PAS :
 
 import asyncio
 import bcrypt
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 from secrets import token_urlsafe
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from model.user import User
+from model.user import User, Role, Permission
 
 # from passlib.hash import bcrypt
 from dataclasses import dataclass
 import logging
+from datetime import datetime, timedelta, timezone
 
 from repositories.user_repository import UserRepository
 from domain.email_service import EmailService
@@ -558,3 +559,535 @@ class UserService:
         except Exception as e:
             logger.error(f"Password reset failed: {e}", exc_info=True)
             return False, "Une erreur est survenue lors de la réinitialisation"
+
+    # ==========================================
+    # GESTION DES RÔLES
+    # ==========================================
+    async def create_role(
+        self,
+        name: str,
+        display_name: str,
+        description: Optional[str] = None,
+        priority: int = 0,
+    ) -> Role:
+        """
+        Créer un nouveau rôle avec validation
+
+        Validations :
+        - Le nom ne doit pas contenir d'espaces
+        - Le nom doit être en minuscules
+        - Le nom doit être unique
+        """
+        # Validation
+        if " " in name:
+            raise ValueError("Le nom du rôle ne doit pas contenir d'espaces")
+
+        if name != name.lower():
+            raise ValueError("Le nom du rôle doit être en minuscules")
+
+        # Vérifier l'unicité
+        existing = await self.user_repo.get_role_by_name(name)
+        if existing:
+            raise ValueError(f"Un rôle avec le nom '{name}' existe déjà")
+
+        return await self.user_repo.create_role(
+            name=name,
+            display_name=display_name,
+            description=description,
+            priority=priority,
+        )
+
+    async def assign_permissions_to_role(
+        self, role_id: int, permission_names: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Assigner plusieurs permissions à un rôle
+
+        Returns:
+            Dict avec statistiques (success_count, failed_count, failures)
+        """
+        success_count = 0
+        failed_count = 0
+        failures = []
+
+        for perm_name in permission_names:
+            permission = await self.user_repo.get_permission_by_name(perm_name)
+
+            if not permission:
+                failed_count += 1
+                failures.append(
+                    {"permission": perm_name, "reason": "Permission not found"}
+                )
+                continue
+
+            success = await self.user_repo.assign_permission_to_role(
+                role_id, permission.id
+            )
+
+            if success:
+                success_count += 1
+            else:
+                failed_count += 1
+                failures.append(
+                    {"permission": perm_name, "reason": "Assignment failed"}
+                )
+
+        logger.info(
+            f"Permissions assigned to role {role_id}: "
+            f"success={success_count}, failed={failed_count}"
+        )
+
+        return {
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "failures": failures,
+        }
+
+    # ==========================================
+    # GESTION DES PERMISSIONS
+    # ==========================================
+
+    async def create_permission(
+        self,
+        name: str,
+        display_name: str,
+        resource: str,
+        action: str,
+        description: Optional[str] = None,
+    ) -> Permission:
+        """
+        Créer une nouvelle permission avec validation
+
+        Validations :
+        - Format : resource.action
+        - Nom en minuscules
+        - Unique
+        """
+        # Validation du format
+        expected_name = f"{resource}.{action}"
+        if name != expected_name:
+            raise ValueError(
+                f"Le nom doit suivre le format 'resource.action'. "
+                f"Attendu: '{expected_name}', reçu: '{name}'"
+            )
+
+        if name != name.lower():
+            raise ValueError("Le nom de la permission doit être en minuscules")
+
+        # Vérifier l'unicité
+        existing = await self.user_repo.get_permission_by_name(name)
+        if existing:
+            raise ValueError(f"Une permission avec le nom '{name}' existe déjà")
+
+        return await self.user_repo.create_permission(
+            name=name,
+            display_name=display_name,
+            resource=resource,
+            action=action,
+            description=description,
+        )
+
+    async def get_permissions_by_resource(self, resource: str) -> List[Permission]:
+        """Récupérer toutes les permissions d'une ressource"""
+        return await self.user_repo.get_permissions_by_resource(resource)
+
+    # ==========================================
+    # GESTION UTILISATEURS <-> RÔLES
+    # ==========================================
+
+    async def assign_role_to_user(
+        self, user_id: int, role_name: str, assigned_by: Optional[int] = None
+    ) -> bool:
+        """
+        Assigner un rôle à un utilisateur par nom de rôle
+
+        Args:
+            user_id: ID de l'utilisateur
+            role_name: Nom du rôle
+            assigned_by: ID de l'utilisateur qui effectue l'attribution
+        """
+        role = await self.user_repo.get_role_by_name(role_name)
+
+        if not role:
+            raise ValueError(f"Rôle '{role_name}' introuvable")
+
+        return await self.user_repo.assign_role_to_user(user_id, role.id, assigned_by)
+
+    async def assign_multiple_roles_to_user(
+        self, user_id: int, role_names: List[str], assigned_by: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Assigner plusieurs rôles à un utilisateur
+
+        Returns:
+            Dict avec statistiques
+        """
+        success_count = 0
+        failed_count = 0
+        failures = []
+
+        for role_name in role_names:
+            try:
+                success = await self.assign_role_to_user(
+                    user_id, role_name, assigned_by
+                )
+                if success:
+                    success_count += 1
+                else:
+                    failed_count += 1
+                    failures.append({"role": role_name, "reason": "Assignment failed"})
+            except ValueError as e:
+                failed_count += 1
+                failures.append({"role": role_name, "reason": str(e)})
+
+        logger.info(
+            f"Roles assigned to user {user_id}: "
+            f"success={success_count}, failed={failed_count}"
+        )
+
+        return {
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "failures": failures,
+        }
+
+    async def remove_role_from_user(self, user_id: int, role_name: str) -> bool:
+        """Retirer un rôle d'un utilisateur"""
+        role = await self.user_repo.get_role_by_name(role_name)
+
+        if not role:
+            raise ValueError(f"Rôle '{role_name}' introuvable")
+
+        return await self.user_repo.remove_role_from_user(user_id, role.id)
+
+    async def get_user_roles(self, user_id: int) -> List[Role]:
+        """Récupérer tous les rôles d'un utilisateur"""
+        return await self.user_repo.get_user_roles(user_id)
+
+    # ==========================================
+    # ⭐ GESTION PERMISSIONS DIRECTES
+    # ==========================================
+
+    async def grant_permission_to_user(
+        self,
+        user_id: int,
+        permission_name: str,
+        assigned_by: Optional[int] = None,
+        duration_hours: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> bool:
+        """
+        Accorder une permission directe à un utilisateur
+
+        Args:
+            user_id: ID de l'utilisateur
+            permission_name: Nom de la permission (ex: 'user.delete')
+            assigned_by: ID de l'utilisateur qui accorde la permission
+            duration_hours: Durée de validité en heures (None = permanente)
+            reason: Raison de l'attribution (pour audit)
+
+        Returns:
+            bool: True si succès
+
+        Example:
+            # Permission permanente
+            await service.grant_permission_to_user(
+                user_id=123,
+                permission_name='post.publish',
+                assigned_by=1,
+                reason='Auteur invité pour événement spécial'
+            )
+
+            # Permission temporaire (24h)
+            await service.grant_permission_to_user(
+                user_id=456,
+                permission_name='user.ban',
+                assigned_by=1,
+                duration_hours=24,
+                reason='Modération temporaire pendant événement'
+            )
+        """
+        permission = await self.user_repo.get_permission_by_name(permission_name)
+
+        if not permission:
+            raise ValueError(f"Permission '{permission_name}' introuvable")
+
+        # Calculer la date d'expiration si durée spécifiée
+        expires_at = None
+        if duration_hours:
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=duration_hours)
+
+        success = await self.user_repo.assign_permission_to_user(
+            user_id=user_id,
+            permission_id=permission.id,
+            assigned_by=assigned_by,
+            expires_at=expires_at,
+            reason=reason,
+        )
+
+        if success:
+            logger.info(
+                f"Permission granted: user_id={user_id}, permission={permission_name}, "
+                f"duration={duration_hours}h, reason={reason}"
+            )
+
+        return success
+
+    async def revoke_permission_from_user(
+        self, user_id: int, permission_name: str
+    ) -> bool:
+        """
+        Révoquer une permission directe d'un utilisateur
+
+        Note : Ne révoque pas les permissions héritées des rôles
+        """
+        permission = await self.user_repo.get_permission_by_name(permission_name)
+
+        if not permission:
+            raise ValueError(f"Permission '{permission_name}' introuvable")
+
+        success = await self.user_repo.remove_permission_from_user(
+            user_id, permission.id
+        )
+
+        if success:
+            logger.info(
+                f"Permission revoked: user_id={user_id}, permission={permission_name}"
+            )
+
+        return success
+
+    async def grant_multiple_permissions_to_user(
+        self,
+        user_id: int,
+        permission_names: List[str],
+        assigned_by: Optional[int] = None,
+        duration_hours: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Accorder plusieurs permissions directes à un utilisateur
+
+        Returns:
+            Dict avec statistiques
+        """
+        success_count = 0
+        failed_count = 0
+        failures = []
+
+        for perm_name in permission_names:
+            try:
+                success = await self.grant_permission_to_user(
+                    user_id=user_id,
+                    permission_name=perm_name,
+                    assigned_by=assigned_by,
+                    duration_hours=duration_hours,
+                    reason=reason,
+                )
+                if success:
+                    success_count += 1
+                else:
+                    failed_count += 1
+                    failures.append({"permission": perm_name, "reason": "Grant failed"})
+            except ValueError as e:
+                failed_count += 1
+                failures.append({"permission": perm_name, "reason": str(e)})
+
+        logger.info(
+            f"Permissions granted to user {user_id}: "
+            f"success={success_count}, failed={failed_count}"
+        )
+
+        return {
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "failures": failures,
+        }
+
+    async def get_user_direct_permissions(self, user_id: int) -> List[Permission]:
+        """Récupérer uniquement les permissions directes (sans les rôles)"""
+        return await self.user_repo.get_user_direct_permissions(user_id)
+
+    async def get_user_direct_permissions_detailed(
+        self, user_id: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Récupérer les permissions directes avec détails
+
+        Returns:
+            Liste de dicts contenant : permission, assigned_at, expires_at, reason, etc.
+        """
+        perms_with_details = (
+            await self.user_repo.get_user_direct_permissions_with_details(user_id)
+        )
+
+        result = []
+        for perm, details in perms_with_details:
+            # Calculer si la permission est expirée ou expire bientôt
+            is_expired = False
+            expires_soon = False
+
+            if details["expires_at"]:
+                now = datetime.now(timezone.utc)
+                is_expired = details["expires_at"] < now
+
+                # Expire dans moins de 24h ?
+                if not is_expired:
+                    time_left = details["expires_at"] - now
+                    expires_soon = time_left < timedelta(hours=24)
+
+            result.append(
+                {
+                    "permission": perm,
+                    "assigned_at": details["assigned_at"],
+                    "assigned_by": details["assigned_by"],
+                    "expires_at": details["expires_at"],
+                    "reason": details["reason"],
+                    "is_expired": is_expired,
+                    "expires_soon": expires_soon,
+                }
+            )
+
+        return result
+
+    # ==========================================
+    # VÉRIFICATIONS ET REQUÊTES
+    # ==========================================
+
+    async def user_has_permission(self, user_id: int, permission_name: str) -> bool:
+        """
+        Vérifier si un utilisateur a une permission (directe ou via rôle)
+        """
+        return await self.user_repo.user_has_permission(user_id, permission_name)
+
+    async def user_has_role(self, user_id: int, role_name: str) -> bool:
+        """Vérifier si un utilisateur a un rôle"""
+        return await self.user_repo.user_has_role(user_id, role_name)
+
+    async def get_user_all_permissions(self, user_id: int) -> Dict[str, Any]:
+        """
+        Récupérer toutes les permissions d'un utilisateur avec détails
+
+        Returns:
+            Dict avec :
+            - all_permissions : Liste complète (dédupliquée)
+            - direct_permissions : Permissions directes uniquement
+            - role_permissions : Permissions via rôles
+        """
+        all_perms = await self.user_repo.get_user_all_permissions(user_id)
+        direct_perms = await self.user_repo.get_user_direct_permissions(user_id)
+        roles = await self.user_repo.get_user_roles(user_id)
+
+        role_perms_set = set()
+        for role in roles:
+            role_perms = await self.user_repo.get_role_permissions(role.id)
+            for perm in role_perms:
+                role_perms_set.add(perm.name)
+
+        return {
+            "all_permissions": all_perms,
+            "direct_permissions": [p.name for p in direct_perms],
+            "role_permissions": sorted(list(role_perms_set)),
+        }
+
+    async def get_user_summary(self, user_id: int) -> Dict[str, Any]:
+        """
+        Récupérer un résumé complet RBAC pour un utilisateur
+
+        Returns:
+            Dict avec rôles, permissions, statistiques
+        """
+        roles = await self.get_user_roles(user_id)
+        perms_details = await self.get_user_all_permissions(user_id)
+        direct_perms_detailed = await self.get_user_direct_permissions_detailed(user_id)
+
+        # Compter les permissions expirées/expires bientôt
+        expired_count = sum(1 for p in direct_perms_detailed if p["is_expired"])
+        expires_soon_count = sum(1 for p in direct_perms_detailed if p["expires_soon"])
+
+        return {
+            "roles": [
+                {
+                    "id": role.id,
+                    "name": role.name,
+                    "display_name": role.display_name,
+                    "priority": role.priority,
+                }
+                for role in roles
+            ],
+            "permissions": perms_details,
+            "direct_permissions_detailed": direct_perms_detailed,
+            "statistics": {
+                "total_roles": len(roles),
+                "total_permissions": len(perms_details["all_permissions"]),
+                "direct_permissions_count": len(perms_details["direct_permissions"]),
+                "role_permissions_count": len(perms_details["role_permissions"]),
+                "expired_permissions": expired_count,
+                "expires_soon_permissions": expires_soon_count,
+            },
+        }
+
+    # ==========================================
+    # MAINTENANCE
+    # ==========================================
+
+    async def cleanup_expired_permissions(self) -> int:
+        """
+        Nettoyer les permissions directes expirées
+
+        À exécuter régulièrement (CRON job)
+        """
+        count = await self.user_repo.cleanup_expired_permissions()
+        logger.info(f"Cleaned up {count} expired direct permissions")
+        return count
+
+    async def get_system_statistics(self) -> Dict[str, Any]:
+        """
+        Récupérer les statistiques globales du système RBAC
+
+        Returns:
+            Dict avec statistiques complètes
+        """
+        all_roles = await self.user_repo.get_all_roles()
+        all_permissions = await self.user_repo.get_all_permissions()
+
+        # Compter les utilisateurs par rôle
+        role_stats = []
+        for role in all_roles:
+            user_count = await self.user_repo.get_role_user_count(role.id)
+            role_stats.append(
+                {
+                    "role": role.name,
+                    "display_name": role.display_name,
+                    "user_count": user_count,
+                    "priority": role.priority,
+                }
+            )
+
+        # Compter les utilisateurs avec permissions directes
+        permission_stats = []
+        for perm in all_permissions:
+            direct_user_count = await self.user_repo.get_permission_direct_user_count(
+                perm.id
+            )
+            role_count = await self.user_repo.get_permission_role_count(perm.id)
+
+            if direct_user_count > 0:  # Seulement si utilisé directement
+                permission_stats.append(
+                    {
+                        "permission": perm.name,
+                        "direct_user_count": direct_user_count,
+                        "role_count": role_count,
+                    }
+                )
+
+        return {
+            "total_roles": len(all_roles),
+            "total_permissions": len(all_permissions),
+            "role_statistics": sorted(
+                role_stats, key=lambda x: x["user_count"], reverse=True
+            ),
+            "permission_statistics": sorted(
+                permission_stats, key=lambda x: x["direct_user_count"], reverse=True
+            ),
+        }
