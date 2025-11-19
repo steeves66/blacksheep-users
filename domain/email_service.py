@@ -4,6 +4,9 @@ from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import os
 from app.settings import Settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -99,17 +102,17 @@ class EmailService:
         """
         try:
             # Charger les templates
-            template_html = self.jinja_env.get_template("resend-verification_email.html")
+            template_html = self.jinja_env.get_template(
+                "resend-verification_email.html"
+            )
             template_text = self.jinja_env.get_template("resend-verification_email.txt")
 
             # Rendre les templates
             body_html = template_html.render(
-                verification_link=verification_link, 
-                username=username
+                verification_link=verification_link, username=username
             )
             body_text = template_text.render(
-                verification_link=verification_link, 
-                username=username
+                verification_link=verification_link, username=username
             )
 
             # Envoyer l'email
@@ -125,33 +128,58 @@ class EmailService:
             return False
             """Renvoyer un email de vérification"""
             user = await self.user_repo.get_user_by_email(email)
-            
+
             if not user:
                 raise ValueError("Aucun utilisateur trouvé avec cet email")
-            
+
             if user.is_active:
                 raise ValueError("Ce compte est déjà activé")
-            
+
             await self.user_repo.delete_user_tokens(user.id)
             raw_token = self._generate_token()
-            
+
             await self.user_repo.create_verification_token(
                 user_id=user.id,
                 token=raw_token,
-                expiry_delay=self.settings.verification.token_expiry_delay
+                expiry_delay=self.settings.verification.token_expiry_delay,
             )
-            
+
             signed_token = self._sign_token(user.id, raw_token)
-            verification_url = (
-                f"{self.settings.verification.base_url}/users/verify-email/{signed_token}"
-            )
-            
+            verification_url = f"{self.settings.verification.base_url}/users/verify-email/{signed_token}"
+
             # Utiliser la méthode personnalisée pour le renvoi
             email_sent = await self.email_service.send_resend_verification_email(
                 to=user.email,
                 verification_link=verification_url,
-                username=user.username
+                username=user.username,
             )
-            
+
             logger.info(f"Verification email resent to: {email}")
             return email_sent
+
+    async def send_password_reset_email(
+        self, to: str, reset_link: str, username: str
+    ) -> bool:
+        """
+        Envoie l'email de réinitialisation de mot de passe
+        """
+        try:
+            # Charger les templates
+            template_html = self.jinja_env.get_template("password_reset_email.html")
+            template_text = self.jinja_env.get_template("password_reset_email.txt")
+
+            # Rendre les templates
+            body_html = template_html.render(reset_link=reset_link, username=username)
+            body_text = template_text.render(reset_link=reset_link, username=username)
+
+            # Envoyer l'email
+            await self.send_email(
+                to=to,
+                subject="🔒 Réinitialisation de votre mot de passe",
+                body_html=body_html,
+                body_text=body_text,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de reset: {e}")
+            return False

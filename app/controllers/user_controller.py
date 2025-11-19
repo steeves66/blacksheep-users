@@ -1,13 +1,30 @@
-from blacksheep import Request, text, json, redirect, Response
-from blacksheep.server.controllers import Controller, get, post
-from datetime import datetime, UTC
+import logging
+from datetime import UTC, datetime
 from typing import Optional
 from urllib.parse import urlencode
-from itsdangerous import SignatureExpired, BadSignature
+
+from blacksheep import Request, Response, json, redirect, text
+from blacksheep.server.controllers import Controller, get, post
 
 from domain.user_service import UserService
+from helpers.decorators import rate_limit, require_role
 
-import logging
+"""
+UserController - Contrôleur MVC pour la gestion des utilisateurs avec BlackSheep
+
+Responsabilités :
+- Affichage des vues HTML (formulaires d'inscription, vérification)
+- Traitement des formulaires POST
+- Validation des entrées
+- Orchestration des services
+- Redirection et messages flash
+
+Architecture MVC :
+- Model : Pydantic schemas pour validation
+- View : Templates Jinja2
+- Controller : Cette classe
+"""
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +55,7 @@ class Users(Controller):
         """Nom de la classe pour la génération automatique des routes"""
         return "users"
 
+    # @require_role("admin")
     @get("/register/view")
     async def register_view(self) -> Response:
         """
@@ -46,6 +64,7 @@ class Users(Controller):
         return self.view(model={"title": "Inscription", "error": None, "form_data": {}})
 
     @post("/register")
+    @rate_limit(limit=5, per_seconds=3600, scope="register")
     async def create_user(self, request: Request) -> Response:
         form_data = await request.form()
 
@@ -211,6 +230,296 @@ class Users(Controller):
                 },
             )
 
+    @get("/login")
+    async def login_view(self, request: Request):
+        """Afficher le formulaire de connexion"""
+        return self.view(
+            "login_view", model={"title": "Connexion", "error": None, "identifier": ""}
+        )
+
+    @post("/login")
+    @rate_limit(limit=5, per_seconds=300, scope="login")
+    async def login(self, request: Request) -> Response:
+        """
+        Traiter la connexion d'un utilisateur
+        """
+        try:
+            form_data = await request.form()
+            identifier = form_data.get("identifier")  # email ou username
+            password = form_data.get("password")
+
+            if not identifier or not password:
+                return self.view(
+                    "login_view",
+                    model={
+                        "title": "Connexion",
+                        "error": "Veuillez renseigner tous les champs",
+                        "identifier": identifier or "",
+                    },
+                )
+
+            # Authentifier l'utilisateur
+            user = await self.user_service.authenticate_user(identifier, password)
+
+            if not user:
+                return self.view(
+                    "login_view",
+                    model={
+                        "title": "Connexion",
+                        "error": "Identifiants incorrects",
+                        "identifier": identifier,
+                    },
+                )
+
+            # Stocker l'utilisateur dans la session
+            request.session["_user_id"] = user.id
+            request.session["username"] = user.username
+            request.session["email"] = user.email
+            request.session["authenticated_at"] = datetime.now(UTC).isoformat()
+
+            logger.info(f"User logged in: user_id={user.id}, email={user.email}")
+
+            # Rediriger vers la page d'accueil ou le tableau de bord
+            return redirect(
+                "/users/home?title=Connexion réussie&message=Bienvenue " + user.username
+            )
+
+        except ValueError as e:
+            # Compte non activé
+            logger.warning(f"Login failed: {str(e)}")
+            return self.view(
+                "login_view",
+                model={
+                    "title": "Connexion",
+                    "error": str(e),
+                    "identifier": identifier,
+                    "can_resend": True,
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Login failed - server error: {str(e)}", exc_info=True)
+            return self.view(
+                "login_view",
+                model={
+                    "title": "Connexion",
+                    "error": "Une erreur est survenue lors de la connexion",
+                    "identifier": identifier,
+                },
+            )
+
+    @get("/logout")
+    async def logout(self, request: Request):
+        """Déconnecter l'utilisateur"""
+        # Supprimer les données de session
+        if "_user_id" in request.session:
+            del request.session["_user_id"]
+        if "username" in request.session:
+            del request.session["username"]
+        if "email" in request.session:
+            del request.session["email"]
+        if "authenticated_at" in request.session:
+            del request.session["authenticated_at"]
+
+        return redirect("/?message=Vous êtes  déconnecté")
+
+    # ==========================================
+    # RÉINITIALISATION DE MOT DE PASSE
+    # ==========================================
+    # GET  /users/forgot-password              # Formulaire demande reset
+    # POST /users/forgot-password              # Traiter demande reset
+    # GET  /users/reset-password/{token}       # Formulaire nouveau mot de passe
+    # POST /users/reset-password/{token}       # Traiter nouveau mot de passe
+
+    @get("/forgot-password")
+    async def forgot_password_view(self, request: Request) -> Response:
+        """Afficher le formulaire de demande de réinitialisation"""
+        email = (
+            request.query.get("email", [""])[0] if request.query.get("email") else ""
+        )
+
+        return self.view(
+            "forgot_password",
+            model={
+                "title": "Mot de passe oublié",
+                "error": None,
+                "form_data": {"email": email},
+            },
+        )
+
+    @post("/forgot-password")
+    @rate_limit(limit=3, per_seconds=900, scope="forgot-password")
+    async def forgot_password(self, request: Request) -> Response:
+        """Traiter la demande de réinitialisation"""
+        try:
+            form_data = await request.form()
+            email = form_data.get("email", "").strip()
+
+            if not email:
+                return self.view(
+                    "forgot_password",
+                    model={
+                        "title": "Mot de passe oublié",
+                        "error": "Veuillez saisir votre adresse email",
+                        "form_data": {"email": email},
+                    },
+                )
+
+            # Demander la réinitialisation
+            await self.user_service.request_password_reset(email)
+
+            # Toujours afficher la même page (sécurité)
+            return self.view("forgot_password_sent", model={"email": email})
+
+        except Exception as e:
+            logger.error(f"Forgot password error: {e}", exc_info=True)
+            return self.view(
+                "forgot_password",
+                model={
+                    "title": "Mot de passe oublié",
+                    "error": "Une erreur est survenue. Veuillez réessayer.",
+                    "form_data": {"email": email if "email" in locals() else ""},
+                },
+            )
+
+    @get("/reset-password/{token}")
+    async def reset_password_view(self, token: str) -> Response:
+        """Afficher le formulaire de nouveau mot de passe"""
+        # Vérifier la validité du token
+        is_valid, message, user = await self.user_service.verify_password_reset_token(
+            token
+        )
+
+        if not is_valid:
+            if message == "expired" and user:
+                return self.view("reset_password_expired", model={"email": user.email})
+
+            return self.view(
+                "home",
+                model={
+                    "title": "Lien invalide",
+                    "message": message,
+                    "can_login": False,
+                    "can_resend": False,
+                },
+            )
+
+        return self.view(
+            "reset_password",
+            model={"title": "Nouveau mot de passe", "token": token, "error": None},
+        )
+
+    @post("/reset-password/{token}")
+    async def reset_password(self, token: str, request: Request) -> Response:
+        """Traiter la réinitialisation du mot de passe"""
+        try:
+            form_data = await request.form()
+            new_password = form_data.get("new_password", "")
+            confirm_password = form_data.get("confirm_password", "")
+
+            # Validation
+            if not new_password or not confirm_password:
+                return self.view(
+                    "reset_password",
+                    model={
+                        "title": "Nouveau mot de passe",
+                        "token": token,
+                        "error": "Veuillez remplir tous les champs",
+                    },
+                )
+
+            if new_password != confirm_password:
+                return self.view(
+                    "reset_password",
+                    model={
+                        "title": "Nouveau mot de passe",
+                        "token": token,
+                        "error": "Les mots de passe ne correspondent pas",
+                    },
+                )
+
+            if len(new_password) < 8:
+                return self.view(
+                    "reset_password",
+                    model={
+                        "title": "Nouveau mot de passe",
+                        "token": token,
+                        "error": "Le mot de passe doit contenir au moins 8 caractères",
+                    },
+                )
+
+            # Réinitialiser le mot de passe
+            success, message = await self.user_service.reset_password(
+                token, new_password
+            )
+
+            if not success:
+                return self.view(
+                    "reset_password",
+                    model={
+                        "title": "Nouveau mot de passe",
+                        "token": token,
+                        "error": message,
+                    },
+                )
+
+            # Succès : rediriger vers login
+            logger.info("Password reset successful")
+            return self.view(
+                "login_view",
+                model={
+                    "title": "Connexion",
+                    "success": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.",
+                    "error": None,
+                    "identifier": "",
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Reset password error: {e}", exc_info=True)
+            return self.view(
+                "reset_password",
+                model={
+                    "title": "Nouveau mot de passe",
+                    "token": token,
+                    "error": "Une erreur est survenue. Veuillez réessayer.",
+                },
+            )
+
+    """
+    Route admin pour déboguer
+    Ajoutez une route pour voir les stats (à protéger en production) :
+    """
+
+    @get("/admin/rate-limits")
+    async def admin_rate_limits(self, request: Request) -> Response:
+        """Voir les dernières tentatives (admin uniquement)"""
+        from sqlalchemy import select
+
+        from dbsession import AsyncSessionLocal
+        from model.user import RateLimit
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(RateLimit).order_by(RateLimit.attempted_at.desc()).limit(50)
+            )
+            attempts = result.scalars().all()
+
+            data = [
+                {
+                    "id": a.id,
+                    "identifier": a.identifier,
+                    "endpoint": a.endpoint,
+                    "ip": a.ip_address,
+                    "time": a.attempted_at.isoformat(),
+                }
+                for a in attempts
+            ]
+
+            from blacksheep import json as json_response
+
+            return json_response(data)
+
 
 class SessionController(Controller):
     """Contrôleur de test des sessions."""
@@ -234,29 +543,29 @@ class SessionController(Controller):
 
         return text(session["example"])
 
-    @post("/login")
-    async def login(self, request: Request):
-        """Login utilisateur."""
-        data = await request.json()
-        username = data.get("username")
+    # @post("/login")
+    # async def login(self, request: Request):
+    #     """Login utilisateur."""
+    #     data = await request.json()
+    #     username = data.get("username")
 
-        if not username:
-            return json({"error": "Username requis"}, status=400)
+    #     if not username:
+    #         return json({"error": "Username requis"}, status=400)
 
-        # Simuler authentification
-        user_id = hash(username) % 10000
+    #     # Simuler authentification
+    #     user_id = hash(username) % 10000
 
-        # Stocker dans la session
-        request.session["_user_id"] = user_id
-        request.session["username"] = username
-        request.session["authenticated_at"] = datetime.now(UTC).isoformat()
+    #     # Stocker dans la session
+    #     request.session["_user_id"] = user_id
+    #     request.session["username"] = username
+    #     request.session["authenticated_at"] = datetime.now(UTC).isoformat()
 
-        return json(
-            {
-                "message": f"Connecté en tant que {username}",
-                "user_id": user_id,
-            }
-        )
+    #     return json(
+    #         {
+    #             "message": f"Connecté en tant que {username}",
+    #             "user_id": user_id,
+    #         }
+    #     )
 
     @post("/logout")
     async def logout(self, request: Request):
@@ -318,6 +627,7 @@ class SessionController(Controller):
         )
 
     @get("/session/test")
+    @rate_limit(limit=10, per_seconds=60, by="ip", scope="session-test")
     async def test_session_persistence(self, request: Request):
         """
         Route de test pour vérifier la persistance des sessions.
@@ -327,9 +637,10 @@ class SessionController(Controller):
         - Compteur de visites
         - Vérification en DB
         """
+        from sqlalchemy import select
+
         from dbsession import AsyncSessionLocal
         from model.user import Session as SessionModel
-        from sqlalchemy import select
 
         # Récupérer ou initialiser le compteur
         visit_count = request.session.get("visit_count", 0)
@@ -392,9 +703,10 @@ class SessionController(Controller):
     @get("/session/stats")
     async def session_stats(self, request: Request):
         """Statistiques globales des sessions en DB."""
+        from sqlalchemy import func, select
+
         from dbsession import AsyncSessionLocal
         from model.user import Session as SessionModel
-        from sqlalchemy import select, func
 
         async with AsyncSessionLocal() as db:
             # Nombre total de sessions

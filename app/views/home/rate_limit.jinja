@@ -1,0 +1,21 @@
+{% extends "layout.jinja" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="container text-center">
+        <h2 class="page-section-heading text-uppercase text-secondary mb-4">
+            {{ title or "Trop de tentatives" }}
+        </h2>
+        <p class="text-muted mb-4">
+            {{ message or "Veuillez patienter un instant avant de réessayer." }}
+        </p>
+        {% if retry_after %}
+        <p class="text-muted">
+            Vous pourrez réessayer dans environ {{ retry_after }} seconde{{ 's' if retry_after|int > 1 }}.
+        </p>
+        {% endif %}
+        <a class="btn btn-primary mt-3" href="/">Retour à l'accueil</a>
+    </div>
+</section>
+{% endblock %}
+
