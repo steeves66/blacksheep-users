@@ -1,2 +1,29 @@
+---
+# Configuration pour l'environnement de développement
+# Ce fichier surcharge settings.yaml quand APP_ENV=development
+
 app:
-  show_error_details: true
+  show_error_details: true # Afficher les détails d'erreur en dev
+
+database:
+  echo: true # Afficher les requêtes SQL en développement
+
+verification:
+  base_url: "http://localhost:44777"
+
+# ==========================================
+# Sécurité en développement
+# ==========================================
+security:
+  # En dev, CORS est automatiquement permissif (voir main.py)
+  # Pas besoin de lister tous les origins
+  cors_allowed_origins:
+    - "http://localhost:3000" # Frontend React/Vue local
+    - "http://localhost:8080" # Autre frontend
+    - "http://localhost:5173" # Vite dev server
+
+  # HSTS désactivé en dev (automatique via is_development())
+  hsts_max_age: 0
+
+  # CSRF activé même en dev (pour tester)
+  uses_only_bearer_auth: false

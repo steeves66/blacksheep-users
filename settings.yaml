@@ -27,3 +27,29 @@ email:
 database:
   url: "sqlite+aiosqlite:///app.db"
   echo: false # Mettre à True pour voir les requêtes SQL en développement
+
+# ==========================================
+# ⭐ NOUVEAU : Configuration de sécurité
+# ==========================================
+security:
+  # CORS - Origins autorisés en production
+  # En développement, CORS est automatiquement configuré en mode permissif (tous origins)
+  cors_allowed_origins:
+    - "https://votre-domaine.com"
+    - "https://www.votre-domaine.com"
+    - "https://app.votre-domaine.com"
+
+  # CORS - Origins pour l'administration (très restrictif)
+  cors_admin_origins:
+    - "https://admin.votre-domaine.com"
+
+  # HSTS - Durée du cache en secondes (31536000 = 1 an)
+  hsts_max_age: 31536000
+
+  # HSTS - Inclure les sous-domaines dans la politique
+  hsts_include_subdomains: true
+
+  # CSRF - Mettre à true si votre API utilise UNIQUEMENT JWT Bearer
+  # (pas de cookies d'authentification)
+  # Si false → CSRF activé (requis pour authentification par cookies)
+  uses_only_bearer_auth: false
