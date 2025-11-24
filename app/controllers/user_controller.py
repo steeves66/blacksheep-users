@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Optional
 from urllib.parse import urlencode
@@ -8,6 +9,7 @@ from blacksheep.server.controllers import Controller, get, post
 
 from domain.user_service import UserService
 from helpers.decorators import rate_limit, require_role
+from repositories.user_repository import UserRepository
 
 """
 UserController - Contrôleur MVC pour la gestion des utilisateurs avec BlackSheep
@@ -42,8 +44,9 @@ class Users(Controller):
     - GET  /users/success               -> Page de succès
     """
 
-    def __init__(self, user_service: UserService):
+    def __init__(self, user_service: UserService, user_repo: UserRepository):
         self.user_service = user_service
+        self.user_repo = user_repo
 
     @classmethod
     def route(cls) -> str:
@@ -54,6 +57,401 @@ class Users(Controller):
     def class_name(cls) -> str:
         """Nom de la classe pour la génération automatique des routes"""
         return "users"
+
+    @get("/simple-register")
+    async def simple_register_view(self, request: Request) -> Response:
+        return self.view(
+            "simple_register_view",
+            model={
+                "title": "Ajouter un utilisateur",
+                "error": None,
+                "success": None,
+                "form_data": {},
+            },
+            request=request,
+        )
+
+    def _validate_form(self, data: dict) -> dict:
+        errors = {}
+
+        username = data.get("username", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "")
+        confirm_password = data.get("confirm_password", "")
+
+        # Validation username
+        if not username:
+            errors["username"] = "Le nom d'utilisateur est obligatoire."
+        elif any(u["username"] == username for u in existing_users):
+            errors["username"] = "Ce nom d'utilisateur est déjà utilisé."
+
+        # Validation email
+        email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+        if not email:
+            errors["email"] = "L'adresse email est obligatoire."
+        elif not re.match(email_regex, email):
+            errors["email"] = "Le format de l'adresse email est invalide."
+        elif any(u["email"] == email for u in existing_users):
+            errors["email"] = "Cette adresse email est déjà utilisée."
+
+        # Validation password (min 8 caractères, au moins une majuscule, une minuscule et un chiffre)
+        password_regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+        if not re.match(password_regex, password):
+            errors["password"] = (
+                "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre."
+            )
+
+        # Validation confirm_password conforme avec password
+        if confirm_password != password:
+            errors["confirm_password"] = (
+                "La confirmation du mot de passe ne correspond pas."
+            )
+
+        return errors
+
+    @get("/signup")
+    async def signup_form(self, request: Request):
+        """Affiche le formulaire d'inscription"""
+        return self.view(
+            "signup",
+            model={
+                "title": "Inscription",
+                "errors": {},
+                "data": {},
+            },
+            request=request,
+        )
+
+    # Exemple de base de données temporaire pour vérifier unicité
+    existing_users = [
+        {"username": "alice", "email": "alice@example.com"},
+        {"username": "bob", "email": "bob@example.com"},
+    ]
+
+    def validate_form(data: dict) -> dict:
+        errors = {}
+
+        username = data.get("username", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "")
+        confirm_password = data.get("confirm_password", "")
+
+        # Validation username
+        if not username:
+            errors["username"] = "Le nom d'utilisateur est obligatoire."
+        elif any(u["username"] == username for u in existing_users):
+            errors["username"] = "Ce nom d'utilisateur est déjà utilisé."
+
+        # Validation email
+        email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+        if not email:
+            errors["email"] = "L'adresse email est obligatoire."
+        elif not re.match(email_regex, email):
+            errors["email"] = "Le format de l'adresse email est invalide."
+        elif any(u["email"] == email for u in existing_users):
+            errors["email"] = "Cette adresse email est déjà utilisée."
+
+        # Validation password (min 8 caractères, au moins une majuscule, une minuscule et un chiffre)
+        password_regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+        if not re.match(password_regex, password):
+            errors["password"] = (
+                "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre."
+            )
+
+        # Validation confirm_password conforme avec password
+        if confirm_password != password:
+            errors["confirm_password"] = (
+                "La confirmation du mot de passe ne correspond pas."
+            )
+
+        return errors
+
+    @post("/signup")
+    async def signup(self, request: Request):
+        """Traite la soumission du formulaire d'inscription"""
+        form_data = await request.form()
+        data = {key: form_data.get(key) for key in form_data}
+
+        # Validation des données
+        errors = self._validate_form(data)
+
+        if errors:
+            # Retourne le formulaire avec les erreurs
+            model = {"data": data, "errors": errors, "live_validating": True}
+            return self.view("signup", model, request=request)
+
+        # Extraction des valeurs validées
+        username = data.get("username", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "")
+
+        # Création de l'utilisateur
+        user = await self.user_service.create_simple_user(
+            username=username, email=email, password=password
+        )
+
+        # Redirection vers la page de succès
+        return self.view("success", {"success_signup": True}, request=request)
+
+    @post("/simple-register")
+    async def create_simple_user(self, request: Request) -> Response:
+        """Créer un utilisateur simple (sans vérification email)"""
+        try:
+            form_data = await request.form()
+            username = form_data.get("username")
+            email = form_data.get("email")
+            password = form_data.get("password")
+            confirm_password = form_data.get("confirm_password")
+
+            # ==========================================
+            # CRÉATION DE L'UTILISATEUR
+            # ==========================================
+
+            user = await self.user_service.create_simple_user(
+                username=username, email=email, password=password
+            )
+
+            logger.info(f"Simple user registered successfully: {user.email}")
+
+            # Rediriger vers la page de succès
+            return self.view(
+                "success",
+                model={
+                    "user": user,
+                    "route_origin": "simple-register",
+                },
+                request=request,
+            )
+
+        except ValueError as e:
+            # ⭐ CAPTURER LES ERREURS DE VALIDATION
+            # (email/username déjà utilisé, etc.)
+            logger.warning(f"Registration validation error: {str(e)}")
+
+            return self.view(
+                "simple_register_view",
+                model={
+                    "title": "Ajouter un utilisateur",
+                    "error": str(e),  # Afficher le message d'erreur
+                    "success": None,
+                    "form_data": {
+                        "username": username if "username" in locals() else "",
+                        "email": email if "email" in locals() else "",
+                    },
+                },
+                request=request,
+            )
+
+        except Exception as e:
+            # ⭐ CAPTURER LES AUTRES ERREURS
+            logger.error(f"Registration error: {str(e)}", exc_info=True)
+
+            return self.view(
+                "simple_register_view",
+                model={
+                    "title": "Ajouter un utilisateur",
+                    "error": "Une erreur s'est produite. Veuillez réessayer.",
+                    "success": None,
+                    "form_data": {
+                        "username": username if "username" in locals() else "",
+                        "email": email if "email" in locals() else "",
+                    },
+                },
+                request=request,
+            )
+
+    async def _validate_username(self, username: str) -> str | None:
+        """
+        Valide le username
+
+        Vérifie:
+            - Champ non vide
+            - Longueur minimale (3 caractères)
+            - Unicité en base de données
+
+        Returns:
+            Message d'erreur ou None si valide
+        """
+        username = username.strip()
+
+        # Validation format
+        if not username:
+            return "Le nom d'utilisateur est obligatoire."
+
+        if len(username) < 3:
+            return "Le nom d'utilisateur doit contenir au moins 3 caractères."
+
+        # Validation unicité (base de données)
+        if await self.user_repo.user_exists_by_username(username):
+            raise ValueError(f"Ce nom d'utilisateur est déjà utilisé.")
+
+        return None
+
+    async def _validate_email(self, email: str) -> str | None:
+        """
+        Valide l'email
+
+        Vérifie:
+            - Champ non vide
+            - Format valide (regex)
+            - Unicité en base de données
+
+        Returns:
+            Message d'erreur ou None si valide
+        """
+        email = email.strip().lower()
+
+        # Validation format
+        if not email:
+            return "L'adresse email est obligatoire."
+
+        email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+        if not re.match(email_regex, email):
+            return "Le format de l'adresse email est invalide."
+
+        # Validation unicité (base de données)
+        if await self.user_repo.user_exists_by_email(email):
+            raise ValueError(f"Cette adresse email est déjà utilisée.")
+        return None
+
+    def _validate_password(self, password: str) -> str | None:
+        """
+        Valide le mot de passe
+
+        Vérifie:
+            - Champ non vide
+            - Longueur minimale (8 caractères)
+            - Au moins une majuscule
+            - Au moins une minuscule
+            - Au moins un chiffre
+
+        Returns:
+            Message d'erreur ou None si valide
+        """
+        if not password:
+            return "Le mot de passe est obligatoire."
+
+        password_regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+        if not re.match(password_regex, password):
+            return "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre."
+
+        return None
+
+    def _validate_confirm_password(
+        self, confirm_password: str, password: str
+    ) -> str | None:
+        """
+        Valide la confirmation du mot de passe
+
+        Vérifie:
+            - Champ non vide
+            - Correspondance avec le mot de passe
+
+        Returns:
+            Message d'erreur ou None si valide
+        """
+        if not confirm_password:
+            return "La confirmation du mot de passe est obligatoire."
+
+        if confirm_password != password:
+            return "La confirmation du mot de passe ne correspond pas."
+
+        return None
+
+    # @post("/users/signup")
+    # async def signup(self, request: Request):
+    #     """
+    #     Traite la soumission du formulaire d'inscription
+
+    #     Note: La validation a déjà été faite en AJAX, mais on re-valide
+    #     côté serveur pour la sécurité
+    #     """
+    #     form_data = await request.form()
+    #     data = {key: form_data.get(key) for key in form_data}
+
+    #     # Validation complète côté serveur (sécurité)
+    #     errors = {}
+
+    #     username = data.get("username", "").strip()
+    #     email = data.get("email", "").strip().lower()
+    #     password = data.get("password", "")
+    #     confirm_password = data.get("confirm_password", "")
+
+    #     # Validation de tous les champs
+    #     username_error = await self._validate_username(username)
+    #     if username_error:
+    #         errors["username"] = username_error
+
+    #     email_error = await self._validate_email(email)
+    #     if email_error:
+    #         errors["email"] = email_error
+
+    #     password_error = self._validate_password(password)
+    #     if password_error:
+    #         errors["password"] = password_error
+
+    #     confirm_error = self._validate_confirm_password(confirm_password, password)
+    #     if confirm_error:
+    #         errors["confirm_password"] = confirm_error
+
+    #     if errors:
+    #         # Retourne le formulaire avec les erreurs
+    #         return self.view(
+    #             "signup_ajax",
+    #             {"data": data, "errors": errors, "live_validating": True},
+    #             request=request,
+    #         )
+
+    #     # Création de l'utilisateur
+    #     from passlib.hash import bcrypt
+
+    #     async with db_config.get_session() as session:
+    #         user = User(
+    #             username=username,
+    #             email=email,
+    #             password=bcrypt.hash(password),
+    #             is_active=True,
+    #             is_verified=False,
+    #         )
+
+    #         session.add(user)
+    #         await session.commit()
+    #         await session.refresh(user)
+
+    #     # Redirection vers la page de succès
+    #     return self.view(
+    #         "success",
+    #         {"success_signup": True, "username": user.username, "email": user.email},
+    #         request=request,
+    #     )
+
+    @post("/signup/validate-field")
+    async def validate_field(self, request: Request) -> Response:
+        try:
+            data = await request.json()
+            field = data.get("field")
+            value = data.get("value", "")
+            password = data.get("password", "")  # Pour confirm_password
+
+            # Validation selon le champ
+            if field == "username":
+                error = await self._validate_username(value)
+            elif field == "email":
+                error = await self._validate_email(value)
+            elif field == "password":
+                error = self._validate_password(value)
+            elif field == "confirm_password":
+                error = self._validate_confirm_password(value, password)
+            else:
+                return json({"valid": False, "error": "Champ invalide"}, status=400)
+
+            # Réponse
+            return json({"valid": error is None, "error": error})
+
+        except Exception as e:
+            return json(
+                {"valid": False, "error": f"Erreur serveur: {str(e)}"}, status=500
+            )
 
     # @require_role("admin")
     @get("/register/view")
@@ -79,7 +477,11 @@ class Users(Controller):
 
         logger.info(f"User registered successfully: {user.email}")
 
-        return self.view("success", model={"user": user})
+        return self.view(
+            "success",
+            model={"user": user, "route_origin": "email-register"},
+            request=request,
+        )
 
     @get("/verify-email/{token}")
     async def verify_email(self, token: str) -> Response:

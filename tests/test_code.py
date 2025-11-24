@@ -36,11 +36,10 @@ class Users(Controller):
         """Nom de la classe pour la génération automatique des routes"""
         return "users"
 
-    # Simple register without sending email verification
+    # Simple register
     @get("/register/view/simple")
     async def simple_register_view(self, request: Request) -> Response:
         return self.view(
-            "admin/add_user",
             model={
                 "title": "Ajouter un utilisateur",
                 "error": None,

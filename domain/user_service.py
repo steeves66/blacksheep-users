@@ -42,6 +42,30 @@ class UserService:
         self.user_repo = user_repo
         self.email_service = email_service
 
+    async def create_simple_user(self, username: str, email: str, password: str):
+        """Créer un utilisateur simple sans vérification email"""
+
+        try:
+            # Hasher le mot de passe
+            hashed_password = await self._async_hash_password(password)
+
+            # Créer l'utilisateur (actif immédiatement)
+            user = await self.user_repo.create_user(
+                email=email,
+                username=username,
+                hashed_password=hashed_password,
+                is_active=True,
+            )
+
+            logger.info(f"Simple user created: id={user.id}, email={email}")
+            return user
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"Error creating simple user: {e}", exc_info=True)
+            raise
+
     async def create_user(self, username: str, email: str, password: str):
         """
         Inscrire un nouvel utilisateur avec vérification email

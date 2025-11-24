@@ -37,6 +37,6 @@ if __name__ == "__main__":
         port=port,
         lifespan="on",
         log_level="info",
-        reload=False,
+        reload=True,
         root_path=root_path,
     )

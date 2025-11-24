@@ -17,7 +17,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -102,6 +102,55 @@ class UserRepository:
         """
         result = await self.db.execute(select(User).filter(User.email == email))
         return result.scalar_one_or_none()
+
+    async def user_exists_by_email(self, email: str) -> bool:
+        """
+        Vérifier si un utilisateur avec cet email existe déjà
+        """
+        result = await self.db.execute(
+            select(func.count()).select_from(User).filter(User.email == email)
+        )
+        count = result.scalar()
+        return count > 0
+
+    async def user_exists_by_username(self, username: str) -> bool:
+        """
+        Vérifier si un utilisateur avec ce nom d'utilisateur existe déjà
+        """
+        result = await self.db.execute(
+            select(func.count()).select_from(User).filter(User.username == username)
+        )
+        count = result.scalar()
+        return count > 0
+
+    async def check_user_exists(self, email: str = None, username: str = None) -> bool:
+        """
+        Vérifier si un utilisateur avec cet email OU username existe déjà
+
+        Args:
+            email: Email à vérifier (optionnel)
+            username: Username à vérifier (optionnel)
+
+        Returns:
+            True si l'email OU le username existe
+
+        Raises:
+            ValueError: Si aucun paramètre n'est fourni
+        """
+        if not email and not username:
+            raise ValueError("Au moins email ou username doit être fourni")
+
+        filters = []
+        if email:
+            filters.append(User.email == email)
+        if username:
+            filters.append(User.username == username)
+
+        result = await self.db.execute(
+            select(func.count()).select_from(User).filter(or_(*filters))
+        )
+        count = result.scalar()
+        return count > 0
 
     async def user_exists(self, email: str) -> bool:
         """

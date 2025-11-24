@@ -300,12 +300,6 @@ def configure_application(
     app.services.add_scoped(UserRepository)
     app.services.add_scoped(UserService)
 
-    # ⭐ AJOUTER LES SERVICES RBAC (si vous utilisez RBAC v2)
-    # from repositories.rbac_repository import RBACRepository
-    # from domain.rbac_service import RBACService
-    # app.services.add_scoped(RBACRepository)
-    # app.services.add_scoped(RBACService)
-
     logger.info("✓ Services (DI) configurés")
 
     # ==========================================

@@ -1,10 +1,10 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.settings import load_settings
 
-
 settings = load_settings()
+
 # Création du moteur async
 engine = create_async_engine(
     settings.database.url,
@@ -19,6 +19,7 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
 
 async def get_session() -> AsyncSession:
     """

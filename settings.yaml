@@ -21,7 +21,7 @@ email:
   smtp_password: null #"password"
   from_email: "noreply@example.com"
   from_name: "Example"
-  use_tls: False
+  use_tls: false
 
 # Database Configuration
 database:
