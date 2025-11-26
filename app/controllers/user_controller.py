@@ -535,7 +535,7 @@ class SessionController(Controller):
         return "Session"
 
     @get("/testhome")
-    def index(self, request: Request):
+    async def index(self, request: Request):
         """Test simple de session."""
         # Modifier la session
         session = request.session

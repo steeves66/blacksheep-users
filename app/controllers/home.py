@@ -6,7 +6,7 @@ from blacksheep.server.controllers import Controller, get
 
 class Home(Controller):
     @get()
-    def index(self):
+    async def index(self):
         # Since the @get() decorator is used without arguments, the URL path
         # is by default "/"
 
@@ -16,7 +16,7 @@ class Home(Controller):
         return self.view()
 
     @get(None)
-    def example(self):
+    async def example(self):
         # Since the @get() decorator is used explicitly with None, the URL path
         # is obtained from the method name: "/example"
 
@@ -26,7 +26,7 @@ class Home(Controller):
         return self.view()
 
     @get("/error/rate-limit")
-    def rate_limit_error(self, request: Request):
+    async def rate_limit_error(self, request: Request):
         """
         Page affichée lorsqu'un rate limit est déclenché côté HTML.
         """

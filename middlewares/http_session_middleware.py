@@ -87,16 +87,23 @@ class HttpSessionStoreMiddleware(SessionStore):
                     await db.commit()
                     return Session()
 
-                data = (
-                    db_session.data
-                    if isinstance(db_session.data, dict)
-                    else json.loads(db_session.data or "{}")
-                )
+                # Charger les données JSON depuis la base
+                if isinstance(db_session.data, dict):
+                    data = db_session.data
+                else:
+                    data = json.loads(db_session.data or "{}")
+
+                # Ajouter les métadonnées nécessaires
                 data["_session_id"] = db_session.id
                 data["_user_id"] = db_session.user_id
 
-                # Créer l'objet Session sans marquer modified=True
-                return Session(data)
+                # ✅ CORRECTION CRITIQUE : Utiliser update() pour éviter modified=True
+                # Le constructeur Session(data) marque automatiquement modified=True
+                # ce qui déclenche save() après chaque requête (même en lecture seule)
+                session = Session()
+                session.update(data)
+                session.modified = False  # Important : pas de sauvegarde si pas de modification
+                return session
 
         except Exception as e:
             print(f"Error loading session: {e}")
@@ -116,10 +123,16 @@ class HttpSessionStoreMiddleware(SessionStore):
             response: La réponse HTTP
             session: Objet Session contenant les données à sauvegarder
         """
+        # ✅ CORRECTION CRITIQUE : Vérifier si la session a été modifiée
+        # Évite les écritures inutiles en base de données
+        if not session.modified:
+            return
+
         session_data = session.to_dict()
 
-        if not session_data:
-            print("DEBUG: session_data is empty, returning")
+        # Permettre la création d'une session même vide (cas d'une nouvelle session anonyme)
+        # On vérifie juste qu'il y a au moins un _session_id ou des données à sauvegarder
+        if not session_data and "_session_id" not in session_data:
             return
 
         # Récupérer ou créer un ID
