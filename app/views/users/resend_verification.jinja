@@ -1,0 +1,101 @@
+{%- extends "layout.jinja" -%}
+
+{%- block title -%}
+Renvoyer l'email de vérification
+{%- endblock -%}
+
+{%- block css -%}
+<link rel="stylesheet" href="{{absurl()}}styles/public.css" />
+{%- endblock -%}
+
+{%- block body -%}
+
+<div class="container" style="max-width: 600px; margin: 50px auto; padding: 20px;">
+    
+    <!-- ========================================== -->
+    <!-- TITRE ET MESSAGE CONTEXTUEL -->
+    <!-- ========================================== -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <svg style="width: 64px; height: 64px; color: #f59e0b; margin: 0 auto 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+        </svg>
+        
+        <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 15px;">
+            Renvoyer l'email de vérification
+        </h1>
+        
+        <p style="font-size: 16px; color: #6b7280; line-height: 1.6;">
+            {{ context_message }}
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MESSAGE D'ERREUR (si présent) -->
+    <!-- ========================================== -->
+    {% if error %}
+    <div style="margin-bottom: 25px; padding: 15px; background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 6px;">
+        <p style="color: #991b1b; font-size: 14px; margin: 0;">
+            ⚠️ {{ error }}
+        </p>
+    </div>
+    {% endif %}
+
+    
+
+    <!-- ========================================== -->
+    <!-- FORMULAIRE -->
+    <!-- ========================================== -->
+    <div style="background-color: #f9fafb; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb;">
+        <form method="post" action="/users/resend-verification">
+            
+            <div style="margin-bottom: 20px;">
+                <label for="email" style="display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                    Adresse email
+                </label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    value="{{ email }}" 
+                    required
+                    placeholder="votre.email@exemple.com"
+                    style="width: 100%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; color: #1f2937; box-sizing: border-box;"
+                />
+            </div>
+
+            <button 
+                type="submit"
+                style="width: 100%; padding: 14px; background-color: #6366f1; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                onmouseover="this.style.backgroundColor='#4f46e5'" 
+                onmouseout="this.style.backgroundColor='#6366f1'">
+                🔄 Renvoyer l'email de vérification
+            </button>
+        </form>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- NOTE INFORMATIVE -->
+    <!-- ========================================== -->
+    <div style="margin-top: 25px; text-align: center;">
+        <p style="font-size: 13px; color: #6b7280; line-height: 1.6;">
+            💡 <strong>Astuce :</strong> Vérifiez votre dossier spam ou courrier indésirable.<br>
+            L'email peut prendre quelques minutes pour arriver.
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIEN RETOUR -->
+    <!-- ========================================== -->
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="/users/login" style="color: #6366f1; text-decoration: none; font-size: 14px; font-weight: 500;">
+            ← Retour à la connexion
+        </a>
+    </div>
+
+</div>
+
+{%- endblock -%}
+
+{%- block js -%}
+<script src="{{absurl()}}scripts/freelancer.js"></script>
+{%- endblock -%}

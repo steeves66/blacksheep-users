@@ -1,0 +1,59 @@
+<!-- app/email_templates/resend-verification_email.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; padding: 15px 30px; background-color: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #6b7280; }
+        .warning { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Nouveau lien de vérification</h1>
+        </div>
+        <div class="content">
+            <p>Bonjour <strong>{{ username }}</strong>,</p>
+            
+            <p>Vous avez demandé un nouveau lien de vérification pour votre compte.</p>
+            
+            <div class="warning">
+                <strong>⚠️ Note importante :</strong> Ce nouveau lien remplace tous les liens précédents qui ne sont plus valides.
+            </div>
+            
+            <p>Cliquez sur le bouton ci-dessous pour activer votre compte :</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ verification_link }}" class="button">
+                    ✅ Activer mon compte
+                </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #6b7280;">
+                Ou copiez ce lien dans votre navigateur :<br>
+                <a href="{{ verification_link }}" style="color: #667eea; word-break: break-all;">{{ verification_link }}</a>
+            </p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <p style="font-size: 13px; color: #6b7280;">
+                    💡 <strong>Conseils :</strong>
+                </p>
+                <ul style="font-size: 13px; color: #6b7280;">
+                    <li>Ce lien expire dans 24 heures</li>
+                    <li>Si vous n'avez pas demandé ce renvoi, ignorez cet email</li>
+                    <li>Vérifiez votre dossier spam si vous ne trouvez pas nos emails</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer">
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>
