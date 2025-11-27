@@ -81,6 +81,75 @@ class Users(Controller):
 
         return self.view("success", model={"user": user})
 
+    @get("/signup")
+    async def signup_view(self) -> Response:
+        """
+        Afficher le formulaire d'inscription simple (sans vérification email)
+        """
+        return self.view("signup_view", model={"error": None, "form_data": {}})
+
+    @post("/signup")
+    @rate_limit(limit=5, per_seconds=3600, scope="signup")
+    async def signup(self, request: Request) -> Response:
+        """
+        Traiter l'inscription simple (utilisateur activé immédiatement)
+        """
+        try:
+            form_data = await request.form()
+
+            username = form_data.get("username", "").strip()
+            email = form_data.get("email", "").strip()
+            password = form_data.get("password", "")
+
+            # Validation basique
+            if not username or not email or not password:
+                return self.view(
+                    "signup_view",
+                    model={
+                        "error": "Tous les champs sont requis",
+                        "form_data": {"username": username, "email": email},
+                    },
+                )
+
+            # Créer et activer l'utilisateur
+            user = await self.user_service.create_simple_user(
+                username=username, email=email, password=password
+            )
+
+            logger.info(f"Simple user created and activated: {user.email}")
+
+            # Afficher la page de succès
+            return self.view(
+                "success",
+                model={"user": user, "route_origin": "simple-register", "success_signup": True},
+            )
+
+        except ValueError as e:
+            logger.warning(f"Signup failed: {str(e)}")
+            return self.view(
+                "signup_view",
+                model={
+                    "error": str(e),
+                    "form_data": {
+                        "username": form_data.get("username", ""),
+                        "email": form_data.get("email", ""),
+                    },
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Signup failed - server error: {str(e)}", exc_info=True)
+            return self.view(
+                "signup_view",
+                model={
+                    "error": "Une erreur est survenue lors de l'inscription",
+                    "form_data": {
+                        "username": form_data.get("username", ""),
+                        "email": form_data.get("email", ""),
+                    },
+                },
+            )
+
     @get("/verify-email/{token}")
     async def verify_email(self, token: str) -> Response:
         """
