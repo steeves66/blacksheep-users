@@ -174,6 +174,7 @@ class Users(Controller):
         )
 
     @post("/resend-verification")
+    @rate_limit(limit=5, per_seconds=3600, scope="resend")
     async def resend_verification_email(self, request: Request) -> Response:
         """
         Traiter le renvoi d'email de vérification

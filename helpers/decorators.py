@@ -221,62 +221,46 @@ async def _check_rate_limit(
     """
     Vérifie si la requête dépasse le rate limit.
 
+    ✅ REFACTORISÉ : Utilise RateLimitService au lieu de requêtes SQL directes
+
     Returns:
         (allowed, response) :
             - allowed = False => il faut retourner `response` (429)
             - allowed = True  => continuer le handler
     """
-    from sqlalchemy import func, select
-
     from dbsession import AsyncSessionLocal
-    from model.user import RateLimit
+    from domain.rate_limit_service import RateLimitService
+    from repositories.rate_limit_repository import RateLimitRepository
 
     identifier, endpoint = _build_rate_limit_identifier(request, by=by)
-    window_end = datetime.now(UTC)
-    window_start = window_end - timedelta(seconds=per_seconds)
 
     # On utilise `scope` pour regrouper plusieurs endpoints sous la même règle si besoin
     logical_endpoint = scope or endpoint
 
+    # Récupérer les informations du client
+    ip_address = _get_client_ip(request)
+    user_agent_header = request.get_first_header(b"User-Agent")
+    user_agent = user_agent_header.decode() if user_agent_header else None
+
     async with AsyncSessionLocal() as db:
-        # Compter les tentatives récentes
-        stmt = (
-            select(func.count(RateLimit.id))
-            .where(RateLimit.identifier == identifier)
-            .where(RateLimit.endpoint == logical_endpoint)
-            .where(RateLimit.attempted_at >= window_start)
+        # ✅ Utiliser le service au lieu de requêtes SQL directes
+        repo = RateLimitRepository(db)
+        service = RateLimitService(repo)
+
+        # Vérifier le rate limit et enregistrer la tentative
+        is_allowed, current_attempts, retry_after = await service.check_rate_limit(
+            identifier=identifier,
+            endpoint=logical_endpoint,
+            limit=limit,
+            window_seconds=per_seconds,
+            ip_address=ip_address,
+            user_agent=user_agent,
         )
-        result = await db.execute(stmt)
-        attempts = result.scalar() or 0
 
-        if attempts >= limit:
-            logger.warning(
-                "Rate limit exceeded: identifier=%s endpoint=%s attempts=%s limit=%s",
-                identifier,
-                logical_endpoint,
-                attempts,
-                limit,
-            )
-
-            # Enregistrer tout de même la tentative pour l'audit
-            rate_entry = RateLimit(
-                identifier=identifier,
-                endpoint=logical_endpoint,
-                ip_address=_get_client_ip(request),
-                user_agent=(
-                    request.get_first_header(b"User-Agent").decode()
-                    if request.get_first_header(b"User-Agent")
-                    else None
-                ),
-            )
-            db.add(rate_entry)
-            await db.commit()
-
+        if not is_allowed:
             # Construire une réponse 429 cohérente (JSON ou HTML)
             accept_header = request.get_first_header(b"Accept")
             is_api_request = accept_header and b"application/json" in accept_header
-
-            retry_after = per_seconds  # simple : conseillons d'attendre la fenêtre
 
             if is_api_request:
                 return False, json_response(
@@ -285,6 +269,8 @@ async def _check_rate_limit(
                         "message": "Trop de tentatives, veuillez réessayer plus tard.",
                         "limit": limit,
                         "per_seconds": per_seconds,
+                        "current_attempts": current_attempts,
+                        "retry_after": retry_after,
                     },
                     status=429,
                     headers=[(b"Retry-After", str(retry_after).encode())],
@@ -301,20 +287,6 @@ async def _check_rate_limit(
                 response = redirect(f"/error/rate-limit?{params}")
                 response.add_header(b"Retry-After", str(retry_after).encode())
                 return False, response
-
-        # Enregistrer la tentative courante
-        rate_entry = RateLimit(
-            identifier=identifier,
-            endpoint=logical_endpoint,
-            ip_address=_get_client_ip(request),
-            user_agent=(
-                request.get_first_header(b"User-Agent").decode()
-                if request.get_first_header(b"User-Agent")
-                else None
-            ),
-        )
-        db.add(rate_entry)
-        await db.commit()
 
     return True, None
 
