@@ -57,11 +57,11 @@ class Users(Controller):
 
     # @require_role("admin")
     @get("/register/view")
-    async def register_view(self) -> Response:
+    async def register_view(self, request: Request) -> Response:
         """
         Afficher le formulaire d'inscription
         """
-        return self.view(model={"title": "Inscription", "error": None, "form_data": {}})
+        return self.view(model={"title": "Inscription", "error": None, "form_data": {}}, request=request)
 
     @post("/register")
     @rate_limit(limit=5, per_seconds=3600, scope="register")
@@ -79,7 +79,7 @@ class Users(Controller):
 
         logger.info(f"User registered successfully: {user.email}")
 
-        return self.view("success", model={"user": user})
+        return self.view("success", model={"user": user}, request=request)
 
     @get("/verify-email/{token}")
     async def verify_email(self, token: str) -> Response:
@@ -133,6 +133,7 @@ class Users(Controller):
                 "can_login": can_login,
                 "can_resend": can_resend,
             },
+            request=request,
         )
 
     @get("/account-active")
@@ -141,7 +142,7 @@ class Users(Controller):
         email_list = request.query.get("email")
         email = email_list[0] if email_list else ""
 
-        return self.view("account_active", model={"email": email})
+        return self.view("account_active", model={"email": email}, request=request)
 
     # ==========================================
     # RENVOI D'EMAIL
@@ -171,6 +172,7 @@ class Users(Controller):
                 "email": email,
                 "error": None,
             },
+            request=request,
         )
 
     @post("/resend-verification")
@@ -190,6 +192,7 @@ class Users(Controller):
                         "title": "Renvoyer l'email de vérification",
                         "error": "L'email est requis",
                     },
+                    request=request,
                 )
 
             # Renvoyer l'email
@@ -203,12 +206,13 @@ class Users(Controller):
                         "title": "Renvoyer l'email de vérification",
                         "error": "Échec de l'envoi de l'email",
                     },
+                    request=request,
                 )
 
             logger.info(f"Verification email resent to: {email}")
 
             return self.view(
-                "resend-success", model={"title": "Email renvoyé", "email": email}
+                "resend-success", model={"title": "Email renvoyé", "email": email}, request=request
             )
 
         except ValueError as e:
@@ -216,6 +220,7 @@ class Users(Controller):
             return self.view(
                 "resend_verification",
                 model={"title": "Renvoyer l'email de vérification", "error": str(e)},
+                request=request,
             )
 
         except Exception as e:
@@ -228,13 +233,14 @@ class Users(Controller):
                     "title": "Renvoyer l'email de vérification",
                     "error": "Une erreur est survenue lors de l'envoi de l'email",
                 },
+                request=request,
             )
 
     @get("/login")
     async def login_view(self, request: Request):
         """Afficher le formulaire de connexion"""
         return self.view(
-            "login_view", model={"title": "Connexion", "error": None, "identifier": ""}
+            "login_view", model={"title": "Connexion", "error": None, "identifier": ""}, request=request
         )
 
     @post("/login")
@@ -256,6 +262,7 @@ class Users(Controller):
                         "error": "Veuillez renseigner tous les champs",
                         "identifier": identifier or "",
                     },
+                    request=request,
                 )
 
             # Authentifier l'utilisateur
@@ -269,6 +276,7 @@ class Users(Controller):
                         "error": "Identifiants incorrects",
                         "identifier": identifier,
                     },
+                    request=request,
                 )
 
             # Stocker l'utilisateur dans la session
@@ -295,6 +303,7 @@ class Users(Controller):
                     "identifier": identifier,
                     "can_resend": True,
                 },
+                request=request,
             )
 
         except Exception as e:
@@ -306,6 +315,7 @@ class Users(Controller):
                     "error": "Une erreur est survenue lors de la connexion",
                     "identifier": identifier,
                 },
+                request=request,
             )
 
     @get("/logout")
@@ -345,6 +355,7 @@ class Users(Controller):
                 "error": None,
                 "form_data": {"email": email},
             },
+            request=request,
         )
 
     @post("/forgot-password")
@@ -363,13 +374,14 @@ class Users(Controller):
                         "error": "Veuillez saisir votre adresse email",
                         "form_data": {"email": email},
                     },
+                    request=request,
                 )
 
             # Demander la réinitialisation
             await self.user_service.request_password_reset(email)
 
             # Toujours afficher la même page (sécurité)
-            return self.view("forgot_password_sent", model={"email": email})
+            return self.view("forgot_password_sent", model={"email": email}, request=request)
 
         except Exception as e:
             logger.error(f"Forgot password error: {e}", exc_info=True)
@@ -380,10 +392,11 @@ class Users(Controller):
                     "error": "Une erreur est survenue. Veuillez réessayer.",
                     "form_data": {"email": email if "email" in locals() else ""},
                 },
+                request=request,
             )
 
     @get("/reset-password/{token}")
-    async def reset_password_view(self, token: str) -> Response:
+    async def reset_password_view(self, token: str, request: Request) -> Response:
         """Afficher le formulaire de nouveau mot de passe"""
         # Vérifier la validité du token
         is_valid, message, user = await self.user_service.verify_password_reset_token(
@@ -392,7 +405,7 @@ class Users(Controller):
 
         if not is_valid:
             if message == "expired" and user:
-                return self.view("reset_password_expired", model={"email": user.email})
+                return self.view("reset_password_expired", model={"email": user.email}, request=request)
 
             return self.view(
                 "home",
@@ -402,11 +415,13 @@ class Users(Controller):
                     "can_login": False,
                     "can_resend": False,
                 },
+                request=request,
             )
 
         return self.view(
             "reset_password",
             model={"title": "Nouveau mot de passe", "token": token, "error": None},
+            request=request,
         )
 
     @post("/reset-password/{token}")
@@ -426,6 +441,7 @@ class Users(Controller):
                         "token": token,
                         "error": "Veuillez remplir tous les champs",
                     },
+                    request=request,
                 )
 
             if new_password != confirm_password:
@@ -436,6 +452,7 @@ class Users(Controller):
                         "token": token,
                         "error": "Les mots de passe ne correspondent pas",
                     },
+                    request=request,
                 )
 
             if len(new_password) < 8:
@@ -446,6 +463,7 @@ class Users(Controller):
                         "token": token,
                         "error": "Le mot de passe doit contenir au moins 8 caractères",
                     },
+                    request=request,
                 )
 
             # Réinitialiser le mot de passe
@@ -461,6 +479,7 @@ class Users(Controller):
                         "token": token,
                         "error": message,
                     },
+                    request=request,
                 )
 
             # Succès : rediriger vers login
@@ -473,6 +492,7 @@ class Users(Controller):
                     "error": None,
                     "identifier": "",
                 },
+                request=request,
             )
 
         except Exception as e:
@@ -484,6 +504,7 @@ class Users(Controller):
                     "token": token,
                     "error": "Une erreur est survenue. Veuillez réessayer.",
                 },
+                request=request,
             )
 
     """
