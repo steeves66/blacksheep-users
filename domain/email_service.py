@@ -183,3 +183,84 @@ class EmailService:
         except Exception as e:
             logger.error(f"Erreur lors de l'envoi de l'email de reset: {e}")
             return False
+
+    async def send_account_creation_confirmation(
+        self, to: str, username: str
+    ) -> bool:
+        """
+        Envoie l'email de confirmation de création de compte
+        """
+        try:
+            # Charger les templates
+            template_html = self.jinja_env.get_template("account_creation_confirmation.html")
+            template_text = self.jinja_env.get_template("account_creation_confirmation.txt")
+
+            # Rendre les templates
+            body_html = template_html.render(username=username)
+            body_text = template_text.render(username=username)
+
+            # Envoyer l'email
+            await self.send_email(
+                to=to,
+                subject="✓ Compte créé avec succès",
+                body_html=body_html,
+                body_text=body_text,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de confirmation de création: {e}")
+            return False
+
+    async def send_thank_you_email(
+        self, to: str, username: str
+    ) -> bool:
+        """
+        Envoie l'email de remerciement après vérification
+        """
+        try:
+            # Charger les templates
+            template_html = self.jinja_env.get_template("thank_you_email.html")
+            template_text = self.jinja_env.get_template("thank_you_email.txt")
+
+            # Rendre les templates
+            body_html = template_html.render(username=username)
+            body_text = template_text.render(username=username)
+
+            # Envoyer l'email
+            await self.send_email(
+                to=to,
+                subject="✓ Merci d'avoir vérifié votre compte",
+                body_html=body_html,
+                body_text=body_text,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de remerciement: {e}")
+            return False
+
+    async def send_welcome_email(
+        self, to: str, username: str
+    ) -> bool:
+        """
+        Envoie l'email de bienvenue
+        """
+        try:
+            # Charger les templates
+            template_html = self.jinja_env.get_template("welcome_email.html")
+            template_text = self.jinja_env.get_template("welcome_email.txt")
+
+            # Rendre les templates
+            body_html = template_html.render(username=username)
+            body_text = template_text.render(username=username)
+
+            # Envoyer l'email
+            await self.send_email(
+                to=to,
+                subject="👋 Bienvenue chez BlackSheep Apps",
+                body_html=body_html,
+                body_text=body_text,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de bienvenue: {e}")
+            return False

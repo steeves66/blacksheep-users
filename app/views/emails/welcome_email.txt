@@ -1,0 +1,19 @@
+👋 Bienvenue dans la communauté !
+
+Bonjour {{ username }},
+
+Bienvenue chez BlackSheep Apps ! Nous sommes ravis de vous compter parmi nous.
+
+POUR BIEN DÉMARRER :
+✓ Complétez votre profil pour personnaliser votre expérience
+✓ Explorez toutes les fonctionnalités disponibles
+✓ Contactez notre support si vous avez des questions
+
+N'hésitez pas à nous contacter si vous avez besoin d'aide.
+Notre équipe est là pour vous accompagner.
+
+---
+Excellente journée,
+L'équipe BlackSheep Apps
+
+Cet email a été envoyé automatiquement, merci de ne pas y répondre.

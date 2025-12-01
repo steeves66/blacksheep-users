@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Bienvenue !</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css"
+            rel="stylesheet"
+        />
+
+        <style>
+            /* Reset et styles de base */
+            body {
+                margin: 0;
+                padding: 0;
+                font-family:
+                    "Inter",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    "Helvetica Neue",
+                    Arial,
+                    sans-serif;
+                background-color: #f3f4f6;
+            }
+
+            /* Container principal */
+            .email-wrapper {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: #f3f4f6;
+            }
+
+            .email-wrapper-cell {
+                padding: 40px 20px;
+            }
+
+            /* Card centrale */
+            .email-card {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+
+            /* Header avec gradient */
+            .email-header {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                padding: 40px 30px;
+                border-radius: 12px 12px 0 0;
+                text-align: center;
+            }
+
+            .icon-circle {
+                background-color: rgba(255, 255, 255, 0.2);
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .icon-circle svg {
+                width: 48px;
+                height: 48px;
+                color: #ffffff;
+            }
+
+            .email-title {
+                color: #ffffff;
+                font-size: 28px;
+                font-weight: 700;
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            /* Contenu principal */
+            .email-content {
+                padding: 40px 30px;
+            }
+
+            .greeting {
+                color: #1f2937;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 20px;
+            }
+
+            .main-text {
+                color: #4b5563;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 30px;
+            }
+
+            /* Features list */
+            .features-list {
+                margin: 20px 0;
+                padding: 0;
+            }
+
+            .feature-item {
+                display: flex;
+                align-items: start;
+                margin-bottom: 16px;
+            }
+
+            .feature-icon {
+                width: 24px;
+                height: 24px;
+                color: #f59e0b;
+                margin-right: 12px;
+                flex-shrink: 0;
+            }
+
+            .feature-text {
+                color: #4b5563;
+                font-size: 15px;
+                line-height: 1.6;
+                margin: 0;
+            }
+
+            /* Message de clôture */
+            .closing-text {
+                color: #4b5563;
+                font-size: 15px;
+                line-height: 1.6;
+                margin: 0 0 10px;
+            }
+
+            .signature {
+                color: #1f2937;
+                font-size: 15px;
+                font-weight: 600;
+                margin: 0;
+            }
+
+            /* Divider */
+            .divider-cell {
+                padding: 0 30px;
+            }
+
+            .divider {
+                height: 1px;
+                background-color: #e5e7eb;
+            }
+
+            /* Footer */
+            .email-footer {
+                padding: 30px;
+                text-align: center;
+                background-color: #f9fafb;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .footer-copyright {
+                color: #6b7280;
+                font-size: 12px;
+                line-height: 1.6;
+                margin: 0 0 8px;
+            }
+
+            .footer-disclaimer {
+                color: #9ca3af;
+                font-size: 11px;
+                line-height: 1.5;
+                margin: 0 0 12px;
+            }
+
+            .footer-links {
+                margin: 12px 0 0;
+            }
+
+            .footer-links a {
+                color: #f59e0b;
+                font-size: 12px;
+                text-decoration: none;
+                margin: 0 10px;
+            }
+
+            .footer-links a:hover {
+                color: #d97706;
+                text-decoration: underline;
+            }
+
+            .footer-separator {
+                color: #d1d5db;
+            }
+
+            /* Responsive */
+            @media only screen and (max-width: 600px) {
+                .email-wrapper-cell {
+                    padding: 20px 10px;
+                }
+
+                .email-header {
+                    padding: 30px 20px;
+                }
+
+                .email-content {
+                    padding: 30px 20px;
+                }
+
+                .email-title {
+                    font-size: 24px;
+                }
+
+                .email-footer {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Container principal -->
+        <table role="presentation" class="email-wrapper">
+            <tr>
+                <td class="email-wrapper-cell">
+                    <!-- Card centrale -->
+                    <table role="presentation" class="email-card">
+                        <!-- Header avec gradient -->
+                        <tr>
+                            <td class="email-header">
+                                <div class="icon-circle">
+                                    <svg
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <h1 class="email-title">
+                                    Bienvenue dans la communauté !
+                                </h1>
+                            </td>
+                        </tr>
+
+                        <!-- Contenu principal -->
+                        <tr>
+                            <td class="email-content">
+                                <!-- Salutation -->
+                                <p class="greeting">
+                                    Bonjour
+                                    <strong
+                                        >{{ username or 'cher utilisateur'
+                                        }}</strong
+                                    >,
+                                </p>
+
+                                <!-- Message principal -->
+                                <p class="main-text">
+                                    Bienvenue chez BlackSheep Apps ! Nous sommes ravis de vous
+                                    compter parmi nous.
+                                </p>
+
+                                <p class="main-text">
+                                    Voici quelques suggestions pour bien démarrer :
+                                </p>
+
+                                <!-- Features list -->
+                                <div class="features-list">
+                                    <div class="feature-item">
+                                        <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <p class="feature-text">Complétez votre profil pour personnaliser votre expérience</p>
+                                    </div>
+                                    <div class="feature-item">
+                                        <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <p class="feature-text">Explorez toutes les fonctionnalités disponibles</p>
+                                    </div>
+                                    <div class="feature-item">
+                                        <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <p class="feature-text">Contactez notre support si vous avez des questions</p>
+                                    </div>
+                                </div>
+
+                                <p class="main-text">
+                                    N'hésitez pas à nous contacter si vous avez besoin d'aide.
+                                    Notre équipe est là pour vous accompagner.
+                                </p>
+
+                                <!-- Message de clôture -->
+                                <p class="closing-text">Excellente journée,</p>
+                                <p class="signature">
+                                    L'équipe BlackSheep Apps
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Divider -->
+                        <tr>
+                            <td class="divider-cell">
+                                <div class="divider"></div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td class="email-footer">
+                                <!-- Informations légales -->
+                                <p class="footer-copyright">
+                                    © 2024 BlackSheep Apps. Tous droits
+                                    réservés.
+                                </p>
+                                <p class="footer-disclaimer">
+                                    Vous recevez cet email suite à la création de votre compte.
+                                </p>
+
+                                <!-- Liens footer -->
+                                <div class="footer-links">
+                                    <a href="#">Aide</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Confidentialité</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Conditions</a>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    </body>
+</html>

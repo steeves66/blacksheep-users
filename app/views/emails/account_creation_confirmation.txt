@@ -1,0 +1,16 @@
+✓ Compte créé avec succès
+
+Bonjour {{ username }},
+
+Nous vous confirmons que votre compte a bien été créé.
+
+📧 PROCHAINE ÉTAPE :
+Vous allez recevoir un email de vérification dans quelques instants
+afin d'activer votre compte. Consultez votre boîte de réception et
+pensez à vérifier vos spams si vous ne le trouvez pas.
+
+---
+À très bientôt,
+L'équipe BlackSheep Apps
+
+Cet email a été envoyé automatiquement, merci de ne pas y répondre.

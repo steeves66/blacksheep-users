@@ -85,6 +85,7 @@ class RegisterVerifiedController(Controller):
             # Validation
             if not username or not email or not password:
                 return self.view(
+                    "register_form",
                     model={
                         "title": "Inscription",
                         "error": "Tous les champs sont requis",
@@ -92,11 +93,13 @@ class RegisterVerifiedController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                    request=request
                 )
 
             if password != confirm_password:
                 return self.view(
+                    "register_form",
                     model={
                         "title": "Inscription",
                         "error": "Les mots de passe ne correspondent pas",
@@ -105,11 +108,12 @@ class RegisterVerifiedController(Controller):
                             "email": email,
                         },
                     },
-                request=request
+                    request=request
                 )
 
             if len(password) < 8:
                 return self.view(
+                    "register_form",
                     model={
                         "title": "Inscription",
                         "error": "Le mot de passe doit contenir au moins 8 caractères",
@@ -118,7 +122,7 @@ class RegisterVerifiedController(Controller):
                             "email": email,
                         },
                     },
-                request=request
+                    request=request
                 )
 
             # Créer l'utilisateur (inactif) et envoyer l'email
@@ -143,6 +147,7 @@ class RegisterVerifiedController(Controller):
         except ValueError as e:
             logger.warning(f"Registration failed: {str(e)}")
             return self.view(
+                "register_form",
                 model={
                     "title": "Inscription",
                     "error": str(e),
@@ -157,6 +162,7 @@ class RegisterVerifiedController(Controller):
         except Exception as e:
             logger.error(f"Registration failed - server error: {str(e)}", exc_info=True)
             return self.view(
+                "register_form",
                 model={
                     "title": "Inscription",
                     "error": "Une erreur est survenue lors de l'inscription",

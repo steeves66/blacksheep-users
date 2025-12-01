@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Confirmation de création de compte</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css"
+            rel="stylesheet"
+        />
+
+        <style>
+            /* Reset et styles de base */
+            body {
+                margin: 0;
+                padding: 0;
+                font-family:
+                    "Inter",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    "Helvetica Neue",
+                    Arial,
+                    sans-serif;
+                background-color: #f3f4f6;
+            }
+
+            /* Container principal */
+            .email-wrapper {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: #f3f4f6;
+            }
+
+            .email-wrapper-cell {
+                padding: 40px 20px;
+            }
+
+            /* Card centrale */
+            .email-card {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+
+            /* Header avec gradient */
+            .email-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 40px 30px;
+                border-radius: 12px 12px 0 0;
+                text-align: center;
+            }
+
+            .icon-circle {
+                background-color: rgba(255, 255, 255, 0.2);
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .icon-circle svg {
+                width: 48px;
+                height: 48px;
+                color: #ffffff;
+            }
+
+            .email-title {
+                color: #ffffff;
+                font-size: 28px;
+                font-weight: 700;
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            /* Contenu principal */
+            .email-content {
+                padding: 40px 30px;
+            }
+
+            .greeting {
+                color: #1f2937;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 20px;
+            }
+
+            .main-text {
+                color: #4b5563;
+                font-size: 16px;
+                line-height: 1.6;
+                margin: 0 0 30px;
+            }
+
+            /* Alerte info */
+            .info-alert {
+                background-color: #dbeafe;
+                border-left: 4px solid #3b82f6;
+                padding: 16px;
+                border-radius: 6px;
+                margin: 0 0 30px;
+            }
+
+            .alert-flex {
+                display: flex;
+                align-items: start;
+            }
+
+            .alert-icon {
+                width: 20px;
+                height: 20px;
+                color: #3b82f6;
+                margin-right: 12px;
+                flex-shrink: 0;
+            }
+
+            .alert-title {
+                color: #1e40af;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 0 4px;
+            }
+
+            .alert-text {
+                color: #1e40af;
+                font-size: 13px;
+                margin: 0;
+                line-height: 1.5;
+            }
+
+            /* Message de clôture */
+            .closing-text {
+                color: #4b5563;
+                font-size: 15px;
+                line-height: 1.6;
+                margin: 0 0 10px;
+            }
+
+            .signature {
+                color: #1f2937;
+                font-size: 15px;
+                font-weight: 600;
+                margin: 0;
+            }
+
+            /* Divider */
+            .divider-cell {
+                padding: 0 30px;
+            }
+
+            .divider {
+                height: 1px;
+                background-color: #e5e7eb;
+            }
+
+            /* Footer */
+            .email-footer {
+                padding: 30px;
+                text-align: center;
+                background-color: #f9fafb;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .footer-copyright {
+                color: #6b7280;
+                font-size: 12px;
+                line-height: 1.6;
+                margin: 0 0 8px;
+            }
+
+            .footer-disclaimer {
+                color: #9ca3af;
+                font-size: 11px;
+                line-height: 1.5;
+                margin: 0 0 12px;
+            }
+
+            .footer-links {
+                margin: 12px 0 0;
+            }
+
+            .footer-links a {
+                color: #667eea;
+                font-size: 12px;
+                text-decoration: none;
+                margin: 0 10px;
+            }
+
+            .footer-links a:hover {
+                color: #764ba2;
+                text-decoration: underline;
+            }
+
+            .footer-separator {
+                color: #d1d5db;
+            }
+
+            /* Responsive */
+            @media only screen and (max-width: 600px) {
+                .email-wrapper-cell {
+                    padding: 20px 10px;
+                }
+
+                .email-header {
+                    padding: 30px 20px;
+                }
+
+                .email-content {
+                    padding: 30px 20px;
+                }
+
+                .email-title {
+                    font-size: 24px;
+                }
+
+                .email-footer {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Container principal -->
+        <table role="presentation" class="email-wrapper">
+            <tr>
+                <td class="email-wrapper-cell">
+                    <!-- Card centrale -->
+                    <table role="presentation" class="email-card">
+                        <!-- Header avec gradient -->
+                        <tr>
+                            <td class="email-header">
+                                <div class="icon-circle">
+                                    <svg
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <h1 class="email-title">
+                                    Compte créé avec succès
+                                </h1>
+                            </td>
+                        </tr>
+
+                        <!-- Contenu principal -->
+                        <tr>
+                            <td class="email-content">
+                                <!-- Salutation -->
+                                <p class="greeting">
+                                    Bonjour
+                                    <strong
+                                        >{{ username or 'cher utilisateur'
+                                        }}</strong
+                                    >,
+                                </p>
+
+                                <!-- Message principal -->
+                                <p class="main-text">
+                                    Nous vous confirmons que votre compte a bien été créé.
+                                    Vous allez recevoir un email de vérification dans quelques instants
+                                    afin d'activer votre compte.
+                                </p>
+
+                                <!-- Alerte info -->
+                                <div class="info-alert">
+                                    <div class="alert-flex">
+                                        <svg
+                                            class="alert-icon"
+                                            fill="currentColor"
+                                            viewBox="0 0 20 20"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                                clip-rule="evenodd"
+                                            ></path>
+                                        </svg>
+                                        <div>
+                                            <p class="alert-title">
+                                                📧 Prochaine étape
+                                            </p>
+                                            <p class="alert-text">
+                                                Consultez votre boîte de réception pour trouver
+                                                l'email de vérification et activer votre compte.
+                                                Pensez à vérifier vos spams si vous ne le trouvez pas.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Message de clôture -->
+                                <p class="closing-text">À très bientôt,</p>
+                                <p class="signature">
+                                    L'équipe BlackSheep Apps
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Divider -->
+                        <tr>
+                            <td class="divider-cell">
+                                <div class="divider"></div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td class="email-footer">
+                                <!-- Informations légales -->
+                                <p class="footer-copyright">
+                                    © 2024 BlackSheep Apps. Tous droits
+                                    réservés.
+                                </p>
+                                <p class="footer-disclaimer">
+                                    Vous recevez cet email car vous venez de créer un compte
+                                    sur notre plateforme.
+                                </p>
+
+                                <!-- Liens footer -->
+                                <div class="footer-links">
+                                    <a href="#">Aide</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Confidentialité</a>
+                                    <span class="footer-separator">•</span>
+                                    <a href="#">Conditions</a>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    </body>
+</html>

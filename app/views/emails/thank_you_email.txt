@@ -1,0 +1,14 @@
+✓ Merci d'avoir vérifié votre compte !
+
+Bonjour {{ username }},
+
+Votre compte a été activé avec succès ! Merci d'avoir pris le temps
+de vérifier votre adresse email.
+
+Vous pouvez maintenant profiter pleinement de tous nos services.
+
+---
+Cordialement,
+L'équipe BlackSheep Apps
+
+Cet email a été envoyé automatiquement, merci de ne pas y répondre.
