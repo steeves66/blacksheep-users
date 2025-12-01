@@ -53,7 +53,8 @@ class RegisterController(Controller):
                 "title": "Signup",
                 "error": None,
                 "form_data": {},
-            }
+            },
+            request=request
         )
 
     @post()
@@ -81,7 +82,8 @@ class RegisterController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                    request=request
                 )
 
             if password != confirm_password:
@@ -93,7 +95,8 @@ class RegisterController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                    request=request
                 )
 
             if len(password) < 8:
@@ -105,7 +108,8 @@ class RegisterController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                    request=request
                 )
 
             # Créer l'utilisateur
@@ -130,7 +134,8 @@ class RegisterController(Controller):
                         "username": username if "username" in locals() else "",
                         "email": email if "email" in locals() else "",
                     },
-                }
+                },
+                request=request
             )
 
         except Exception as e:
@@ -143,7 +148,8 @@ class RegisterController(Controller):
                         "username": username if "username" in locals() else "",
                         "email": email if "email" in locals() else "",
                     },
-                }
+                },
+                request=request
             )
 
     @get("/success")
