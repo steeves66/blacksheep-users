@@ -61,7 +61,7 @@ class AuthController(Controller):
         success = request.query.get("success", [""])[0]
 
         return self.view(
-            "login",
+            "login/login",
             model={
                 "title": "Connexion",
                 "error": None,
@@ -88,7 +88,7 @@ class AuthController(Controller):
             # Validation
             if not identifier or not password:
                 return self.view(
-                    "login",
+                    "login/login",
                     model={
                         "title": "Connexion",
                         "error": "Veuillez renseigner tous les champs",
@@ -103,7 +103,7 @@ class AuthController(Controller):
 
             if not user:
                 return self.view(
-                    "login",
+                    "login/login",
                     model={
                         "title": "Connexion",
                         "error": "Identifiants incorrects",
@@ -128,7 +128,7 @@ class AuthController(Controller):
             # Compte non activé
             logger.warning(f"Login failed: {str(e)}")
             return self.view(
-                "login",
+                "login/login",
                 model={
                     "title": "Connexion",
                     "error": str(e),
@@ -142,7 +142,7 @@ class AuthController(Controller):
         except Exception as e:
             logger.error(f"Login failed - server error: {str(e)}", exc_info=True)
             return self.view(
-                "login",
+                "login/login",
                 model={
                     "title": "Connexion",
                     "error": "Une erreur est survenue lors de la connexion",
@@ -162,7 +162,7 @@ class AuthController(Controller):
         username = request.query.get("username", [""])[0]
 
         return self.view(
-            "login_success",
+            "login/login_success",
             model={
                 "title": "Connexion réussie",
                 "username": username,
@@ -211,7 +211,7 @@ class AuthController(Controller):
         GET /auth/logout/success
         """
         return self.view(
-            "logout_success",
+            "logout/logout_success",
             model={
                 "title": "Déconnexion réussie",
             },
