@@ -252,6 +252,7 @@ class EmailVerificationToken(Base):
     )
     token = Column(String(255), unique=True, index=True, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
+    used_at = Column(DateTime, nullable=True)  # Timestamp when token was used
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 

@@ -199,6 +199,7 @@ class RegisterVerifiedRepository:
         token = result.scalar_one_or_none()
 
         if token:
+            token.is_used = True
             token.used_at = datetime.now(timezone.utc)
             await self.db.commit()
             logger.info(f"Verification token marked as used: token_id={token_id}")
