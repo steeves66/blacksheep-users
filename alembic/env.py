@@ -8,6 +8,10 @@ from alembic import context
 from model.base import Base
 from app.settings import Settings
 
+from app.settings import load_settings
+
+settings = load_settings()
+
 from model.user import (
     User,
     EmailVerificationToken,
@@ -52,7 +56,7 @@ def run_migrations_offline() -> None:
 
     """
     # Convertir l'URL async en URL sync pour Alembic
-    url = Settings.database.url
+    url = settings.database.url
     if url.startswith("sqlite+aiosqlite://"):
         url = url.replace("sqlite+aiosqlite://", "sqlite://")
     elif url.startswith("postgresql+asyncpg://"):
@@ -77,7 +81,7 @@ def run_migrations_online() -> None:
 
     """
     # Convertir l'URL async en URL sync pour Alembic
-    url = Settings.database.url
+    url = settings.database.url
     if url.startswith("sqlite+aiosqlite://"):
         url = url.replace("sqlite+aiosqlite://", "sqlite://")
     elif url.startswith("postgresql+asyncpg://"):
