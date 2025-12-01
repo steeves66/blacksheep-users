@@ -53,11 +53,10 @@ class RegisterVerifiedService:
         1. Vérifier que l'email n'existe pas déjà
         2. Hasher le mot de passe
         3. Créer l'utilisateur (is_active=False)
-        4. Envoyer email de confirmation de création de compte
-        5. Générer un token aléatoire
-        6. Enregistrer le token en base
-        7. Signer le token avec itsdangerous
-        8. Envoyer l'email de vérification avec le lien
+        4. Générer un token aléatoire
+        5. Enregistrer le token en base
+        6. Signer le token avec itsdangerous
+        7. Envoyer l'email de vérification (avec confirmation de création)
 
         Args:
             username: Nom d'utilisateur
@@ -89,27 +88,22 @@ class RegisterVerifiedService:
 
             logger.info(f"User registered: id={user.id}, email={email}")
 
-            # Étape 4 : Envoyer email de confirmation de création de compte
-            await self.email_service.send_account_creation_confirmation(
-                to=user.email, username=username
-            )
-
-            # Étape 5 : Générer un token aléatoire cryptographiquement sûr
+            # Étape 4 : Générer un token aléatoire cryptographiquement sûr
             raw_token = self._generate_token()
 
-            # Étape 6 : Enregistrer le token en base de données
+            # Étape 5 : Enregistrer le token en base de données
             await self.register_verified_repo.create_verification_token(
                 user_id=user.id,
                 token=raw_token,
                 expiry_delay=self.settings.verification.token_expiry_delay,
             )
 
-            # Étape 7 : Signer le token (user_id + token)
+            # Étape 6 : Signer le token (user_id + token)
             signed_token = self._sign_token(user.id, raw_token)
 
-            # Étape 8 : Construire l'URL et envoyer l'email de vérification
+            # Étape 7 : Envoyer l'email combiné (confirmation + vérification)
             verification_url = f"{self.settings.verification.base_url}/auth/register-verified/verify-email/{signed_token}"
-            email_sent = await self.email_service.send_verification_email(
+            email_sent = await self.email_service.send_verification_with_confirmation_email(
                 to=user.email, verification_link=verification_url, username=username
             )
 

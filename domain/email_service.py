@@ -94,6 +94,120 @@ class EmailService:
 
         return True
 
+    async def send_verification_with_confirmation_email(
+        self, to: str, verification_link: str, username: str
+    ) -> bool:
+        """
+        Envoie un email combiné : confirmation de création + lien de vérification
+        (Utilisé pour l'inscription avec vérification email)
+        """
+        try:
+            subject = "✅ Bienvenue ! Activez votre compte"
+            body_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                    <!-- En-tête -->
+                    <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="color: white; margin: 0;">🎉 Bienvenue !</h1>
+                    </div>
+
+                    <!-- Corps du message -->
+                    <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h2 style="color: #4CAF50; margin-top: 0;">Bonjour {username},</h2>
+
+                        <p style="font-size: 16px;">
+                            Votre compte a été créé avec succès ! 🎊
+                        </p>
+
+                        <p style="font-size: 16px;">
+                            Pour finaliser votre inscription et activer votre compte,
+                            veuillez cliquer sur le bouton ci-dessous :
+                        </p>
+
+                        <!-- Bouton CTA -->
+                        <div style="text-align: center; margin: 35px 0;">
+                            <a href="{verification_link}"
+                               style="background-color: #4CAF50;
+                                      color: white;
+                                      padding: 15px 40px;
+                                      text-decoration: none;
+                                      border-radius: 5px;
+                                      font-size: 18px;
+                                      font-weight: bold;
+                                      display: inline-block;
+                                      box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                ✓ Activer mon compte
+                            </a>
+                        </div>
+
+                        <!-- Lien alternatif -->
+                        <div style="margin-top: 25px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+                            <p style="margin: 0; font-size: 14px; color: #666;">
+                                <strong>Le bouton ne fonctionne pas ?</strong><br>
+                                Copiez et collez ce lien dans votre navigateur :
+                            </p>
+                            <p style="margin: 10px 0 0 0; word-break: break-all; font-size: 12px;">
+                                <a href="{verification_link}" style="color: #2196F3;">{verification_link}</a>
+                            </p>
+                        </div>
+
+                        <!-- Note importante -->
+                        <div style="margin-top: 25px; padding: 15px; background-color: #FFF3CD; border-left: 4px solid #FFC107; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 14px; color: #856404;">
+                                ⚠️ <strong>Important :</strong> Ce lien est valide pendant 24 heures.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Pied de page -->
+                    <div style="margin-top: 20px; padding: 20px; text-align: center;">
+                        <p style="color: #999; font-size: 12px; margin: 0;">
+                            Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+                        </p>
+                        <p style="color: #999; font-size: 12px; margin: 10px 0 0 0;">
+                            Vous n'avez pas créé de compte ? Ignorez simplement cet email.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            body_text = f"""
+╔══════════════════════════════════════════╗
+║   🎉 BIENVENUE ! ACTIVEZ VOTRE COMPTE   ║
+╚══════════════════════════════════════════╝
+
+Bonjour {username},
+
+Votre compte a été créé avec succès ! 🎊
+
+Pour finaliser votre inscription et activer votre compte,
+veuillez cliquer sur le lien ci-dessous :
+
+{verification_link}
+
+⚠️ IMPORTANT : Ce lien est valide pendant 24 heures.
+
+Si vous n'avez pas créé de compte, ignorez simplement cet email.
+
+---
+Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+            """
+
+            await self.send_email(
+                to=to,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+            logger.info(f"Combined verification email sent to: {to}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email combiné: {e}")
+            return False
+
     async def send_resend_verification_email(
         self, to: str, verification_link: str, username: str
     ) -> bool:
