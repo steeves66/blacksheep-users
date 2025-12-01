@@ -24,7 +24,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from app.settings import Settings
 from domain.email_service import EmailService
 from model.user import User
-from repositories.user_repository import UserRepository
+from repositories.auth.reset_password_repository import ResetPasswordRepository
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ class ResetPasswordService:
     def __init__(
         self,
         settings: Settings,
-        user_repo: UserRepository,
+        reset_password_repo: ResetPasswordRepository,
         email_service: EmailService,
     ):
         self.settings = settings
-        self.user_repo = user_repo
+        self.reset_password_repo = reset_password_repo
         self.email_service = email_service
 
     async def request_password_reset(self, email: str) -> bool:
@@ -65,7 +65,7 @@ class ResetPasswordService:
         """
         try:
             # 1. Récupérer l'utilisateur
-            user = await self.user_repo.get_user_by_email(email)
+            user = await self.reset_password_repo.get_user_by_email(email)
 
             # Si l'utilisateur n'existe pas, on fait semblant d'envoyer l'email
             # (sécurité: ne pas révéler l'existence du compte)
@@ -78,16 +78,14 @@ class ResetPasswordService:
                 return True
 
             # 2. Supprimer les anciens tokens de cet utilisateur
-            await self.user_repo.delete_user_password_reset_tokens(user.id)
+            await self.reset_password_repo.delete_user_password_reset_tokens(user.id)
 
             # 3. Générer un nouveau token
             raw_token = self._generate_token()
 
             # 4. Enregistrer le token en base (expiration: 1h)
-            await self.user_repo.create_password_reset_token(
-                user_id=user.id,
-                token=raw_token,
-                expiry_hours=1,  # Token valide 1 heure
+            await self.reset_password_repo.create_password_reset_token(
+                user_id=user.id, token=raw_token, expiry_hours=1  # Token valide 1 heure
             )
 
             # 5. Signer le token
@@ -138,7 +136,7 @@ class ResetPasswordService:
                 logger.warning("Password reset token expired")
                 try:
                     user_id, raw_token = serializer.loads_unsafe(signed_token)
-                    user = await self.user_repo.get_user_by_id(user_id)
+                    user = await self.reset_password_repo.get_user_by_id(user_id)
                     return False, "expired", user
                 except Exception:
                     return False, "Le lien a expiré", None
@@ -147,7 +145,7 @@ class ResetPasswordService:
                 return False, "Le lien est invalide", None
 
             # 2. Récupérer le token en base
-            token = await self.user_repo.get_password_reset_token(
+            token = await self.reset_password_repo.get_password_reset_token(
                 user_id, raw_token, only_valid=True
             )
 
@@ -156,7 +154,7 @@ class ResetPasswordService:
                 return False, "Ce lien n'est plus valide", None
 
             # 3. Récupérer l'utilisateur
-            user = await self.user_repo.get_user_by_id(user_id)
+            user = await self.reset_password_repo.get_user_by_id(user_id)
 
             if not user:
                 logger.error(f"User not found for password reset: user_id={user_id}")
@@ -195,7 +193,7 @@ class ResetPasswordService:
             serializer = URLSafeTimedSerializer(self.settings.verification.secret)
             user_id, raw_token = serializer.loads(signed_token, max_age=3600)
 
-            token = await self.user_repo.get_password_reset_token(
+            token = await self.reset_password_repo.get_password_reset_token(
                 user_id, raw_token, only_valid=True
             )
 
@@ -206,7 +204,7 @@ class ResetPasswordService:
             hashed_password = await self._async_hash_password(new_password)
 
             # 4. Mettre à jour le mot de passe
-            updated_user = await self.user_repo.update_user_password(
+            updated_user = await self.reset_password_repo.update_user_password(
                 user.id, hashed_password
             )
 
@@ -214,10 +212,10 @@ class ResetPasswordService:
                 return False, "Erreur lors de la mise à jour du mot de passe"
 
             # 5. Marquer le token comme utilisé
-            await self.user_repo.mark_password_reset_token_as_used(token.id)
+            await self.reset_password_repo.mark_password_reset_token_as_used(token.id)
 
             # 6. Supprimer tous les autres tokens de reset
-            await self.user_repo.delete_user_password_reset_tokens(user.id)
+            await self.reset_password_repo.delete_user_password_reset_tokens(user.id)
 
             logger.info(
                 f"Password reset successful: user_id={user.id}, email={user.email}"

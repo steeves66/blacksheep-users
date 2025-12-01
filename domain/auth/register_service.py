@@ -17,7 +17,7 @@ import logging
 
 import bcrypt
 
-from repositories.user_repository import UserRepository
+from repositories.auth.register_repository import RegisterRepository
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class RegisterService:
     """Service pour l'inscription simple (utilisateur actif immédiatement)"""
 
-    def __init__(self, user_repo: UserRepository):
-        self.user_repo = user_repo
+    def __init__(self, register_repo: RegisterRepository):
+        self.register_repo = register_repo
 
     async def create_simple_user(self, username: str, email: str, password: str):
         """
@@ -46,14 +46,14 @@ class RegisterService:
         """
         try:
             # Vérifier que l'email n'existe pas déjà
-            if await self.user_repo.user_exists(email):
+            if await self.register_repo.user_exists(email):
                 raise ValueError(f"Un utilisateur avec l'email {email} existe déjà")
 
             # Hasher le mot de passe
             hashed_password = await self._async_hash_password(password)
 
             # Créer l'utilisateur (actif immédiatement)
-            user = await self.user_repo.create_user(
+            user = await self.register_repo.create_user(
                 email=email,
                 username=username,
                 hashed_password=hashed_password,

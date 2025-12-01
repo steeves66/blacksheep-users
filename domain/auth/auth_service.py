@@ -1,11 +1,11 @@
 """
-LoginService - Service pour la connexion des utilisateurs
+AuthService - Service pour l'authentification (login + logout)
 
 Responsabilités :
 - Authentifier un utilisateur avec email/username et mot de passe
 - Vérifier le mot de passe
 - Vérifier que le compte est actif
-- Logique métier de l'authentification
+- Logique métier de l'authentification et de la déconnexion
 
 Ne fait PAS :
 - Gestion de la session (délégué au contrôleur)
@@ -19,16 +19,16 @@ from typing import Optional
 import bcrypt
 
 from model.user import User
-from repositories.user_repository import UserRepository
+from repositories.auth.auth_repository import AuthRepository
 
 logger = logging.getLogger(__name__)
 
 
-class LoginService:
-    """Service pour l'authentification des utilisateurs"""
+class AuthService:
+    """Service pour l'authentification (login + logout)"""
 
-    def __init__(self, user_repo: UserRepository):
-        self.user_repo = user_repo
+    def __init__(self, auth_repo: AuthRepository):
+        self.auth_repo = auth_repo
 
     async def authenticate_user(
         self, identifier: str, password: str
@@ -48,11 +48,11 @@ class LoginService:
         """
         try:
             # Essayer de récupérer l'utilisateur par email
-            user = await self.user_repo.get_user_by_email(identifier)
+            user = await self.auth_repo.get_user_by_email(identifier)
 
             # Si pas trouvé par email, essayer par username
             if not user:
-                user = await self.user_repo.get_user_by_username(identifier)
+                user = await self.auth_repo.get_user_by_username(identifier)
 
             if not user:
                 logger.warning(
@@ -107,3 +107,22 @@ class LoginService:
         password_bytes = password.encode("utf-8")
         hashed_bytes = hashed_password.encode("utf-8")
         return await asyncio.to_thread(bcrypt.checkpw, password_bytes, hashed_bytes)
+
+    def prepare_logout(self, user_id: int, username: str) -> dict:
+        """
+        Préparer la déconnexion (pour les logs)
+
+        Args:
+            user_id: ID de l'utilisateur
+            username: Nom d'utilisateur
+
+        Returns:
+            Dict avec les informations de déconnexion
+        """
+        logger.info(f"User logging out: user_id={user_id}, username={username}")
+
+        return {
+            "user_id": user_id,
+            "username": username,
+            "logged_out": True,
+        }

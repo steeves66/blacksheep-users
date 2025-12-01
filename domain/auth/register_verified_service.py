@@ -7,6 +7,7 @@ Responsabilités :
 - Vérifier l'email
 - Renvoyer les emails de vérification
 - Activer le compte après vérification
+- Envoyer des emails de confirmation, remerciement et bienvenue
 
 Ne fait PAS :
 - Envoi direct d'emails (délégué à EmailService)
@@ -24,7 +25,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from app.settings import Settings
 from domain.email_service import EmailService
 from model.user import User
-from repositories.user_repository import UserRepository
+from repositories.auth.register_verified_repository import RegisterVerifiedRepository
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,11 @@ class RegisterVerifiedService:
     def __init__(
         self,
         settings: Settings,
-        user_repo: UserRepository,
+        register_verified_repo: RegisterVerifiedRepository,
         email_service: EmailService,
     ):
         self.settings = settings
-        self.user_repo = user_repo
+        self.register_verified_repo = register_verified_repo
         self.email_service = email_service
 
     async def create_user(
@@ -52,10 +53,11 @@ class RegisterVerifiedService:
         1. Vérifier que l'email n'existe pas déjà
         2. Hasher le mot de passe
         3. Créer l'utilisateur (is_active=False)
-        4. Générer un token aléatoire
-        5. Enregistrer le token en base
-        6. Signer le token avec itsdangerous
-        7. Envoyer l'email avec le lien de vérification
+        4. Envoyer email de confirmation de création de compte
+        5. Générer un token aléatoire
+        6. Enregistrer le token en base
+        7. Signer le token avec itsdangerous
+        8. Envoyer l'email de vérification avec le lien
 
         Args:
             username: Nom d'utilisateur
@@ -71,14 +73,14 @@ class RegisterVerifiedService:
         """
         try:
             # Étape 1 : Vérifier l'unicité de l'email
-            if await self.user_repo.user_exists(email):
+            if await self.register_verified_repo.user_exists(email):
                 raise ValueError(f"Un utilisateur avec l'email {email} existe déjà")
 
             # Étape 2 : Hasher le mot de passe avec bcrypt
             hashed_password = await self._async_hash_password(password)
 
             # Étape 3 : Créer l'utilisateur (inactif par défaut)
-            user = await self.user_repo.create_user(
+            user = await self.register_verified_repo.create_user(
                 email=email,
                 username=username,
                 hashed_password=hashed_password,
@@ -87,20 +89,25 @@ class RegisterVerifiedService:
 
             logger.info(f"User registered: id={user.id}, email={email}")
 
-            # Étape 4 : Générer un token aléatoire cryptographiquement sûr
+            # Étape 4 : Envoyer email de confirmation de création de compte
+            await self.email_service.send_account_creation_confirmation(
+                to=user.email, username=username
+            )
+
+            # Étape 5 : Générer un token aléatoire cryptographiquement sûr
             raw_token = self._generate_token()
 
-            # Étape 5 : Enregistrer le token en base de données
-            await self.user_repo.create_verification_token(
+            # Étape 6 : Enregistrer le token en base de données
+            await self.register_verified_repo.create_verification_token(
                 user_id=user.id,
                 token=raw_token,
                 expiry_delay=self.settings.verification.token_expiry_delay,
             )
 
-            # Étape 6 : Signer le token (user_id + token)
+            # Étape 7 : Signer le token (user_id + token)
             signed_token = self._sign_token(user.id, raw_token)
 
-            # Étape 7 : Construire l'URL et envoyer l'email
+            # Étape 8 : Construire l'URL et envoyer l'email de vérification
             verification_url = f"{self.settings.verification.base_url}/auth/register-verified/verify-email/{signed_token}"
             email_sent = await self.email_service.send_verification_email(
                 to=user.email, verification_link=verification_url, username=username
@@ -132,6 +139,7 @@ class RegisterVerifiedService:
         2. Récupérer le token en base
         3. Vérifier la validité du token
         4. Activer l'utilisateur
+        5. Envoyer email de remerciement et bienvenue
 
         Returns:
             Tuple (success, message, user)
@@ -154,7 +162,7 @@ class RegisterVerifiedService:
                 logger.warning("Verification token expired")
                 try:
                     user_id, raw_token = serializer.loads_unsafe(signed_token)
-                    user = await self.user_repo.get_user_by_id(user_id)
+                    user = await self.register_verified_repo.get_user_by_id(user_id)
                     return False, "expired", user
                 except Exception as ex:
                     logger.error(f"Error loading expired token: {ex}", exc_info=True)
@@ -169,13 +177,13 @@ class RegisterVerifiedService:
 
             # ÉTAPE 2 : Récupérer le token en base
             logger.info(f"Looking for token in database: user_id={user_id}")
-            token = await self.user_repo.get_verification_token(
+            token = await self.register_verified_repo.get_verification_token(
                 user_id, raw_token, only_valid=True
             )
 
             if not token:
                 logger.warning(f"Token not found or already used: user_id={user_id}")
-                user = await self.user_repo.get_user_by_id(user_id)
+                user = await self.register_verified_repo.get_user_by_id(user_id)
 
                 if user and user.is_active:
                     return False, "already_active", user
@@ -184,7 +192,7 @@ class RegisterVerifiedService:
             logger.info(f"Token found in database: token_id={token.id}")
 
             # ÉTAPE 3 : Récupérer l'utilisateur
-            user = await self.user_repo.get_user_by_id(user_id)
+            user = await self.register_verified_repo.get_user_by_id(user_id)
             if not user:
                 logger.error(f"User not found: user_id={user_id}")
                 return False, "Utilisateur introuvable.", None
@@ -194,25 +202,33 @@ class RegisterVerifiedService:
             # ÉTAPE 4 : Vérifier si déjà actif
             if user.is_active:
                 logger.info(f"User already active: user_id={user_id}")
-                await self.user_repo.mark_token_as_used(token.id)
-                await self.user_repo.delete_user_tokens(user_id)
+                await self.register_verified_repo.mark_token_as_used(token.id)
+                await self.register_verified_repo.delete_user_tokens(user_id)
                 return True, "already_active", user
 
             # ÉTAPE 5 : Marquer le token comme utilisé
             logger.info(f"Marking token as used: token_id={token.id}")
-            await self.user_repo.mark_token_as_used(token.id)
+            await self.register_verified_repo.mark_token_as_used(token.id)
 
             # ÉTAPE 6 : Supprimer tous les autres tokens
             logger.info(f"Deleting other tokens for user: user_id={user_id}")
-            await self.user_repo.delete_user_tokens(user_id)
+            await self.register_verified_repo.delete_user_tokens(user_id)
 
             # ÉTAPE 7 : Activer l'utilisateur
             logger.info(f"Activating user: user_id={user_id}")
-            activated_user = await self.user_repo.activate_user(user_id)
+            activated_user = await self.register_verified_repo.activate_user(user_id)
 
             if not activated_user:
                 logger.error(f"Failed to activate user: user_id={user_id}")
                 return False, "Erreur lors de l'activation du compte.", None
+
+            # ÉTAPE 8 : Envoyer emails de remerciement et bienvenue
+            await self.email_service.send_thank_you_email(
+                to=user.email, username=user.username
+            )
+            await self.email_service.send_welcome_email(
+                to=user.email, username=user.username
+            )
 
             logger.info(
                 f"User email verified and activated: user_id={user_id}, email={user.email}"
@@ -243,7 +259,7 @@ class RegisterVerifiedService:
         Raises:
             ValueError: Si l'utilisateur n'existe pas ou est déjà activé
         """
-        user = await self.user_repo.get_user_by_email(email)
+        user = await self.register_verified_repo.get_user_by_email(email)
 
         if not user:
             raise ValueError("Aucun utilisateur trouvé avec cet email")
@@ -252,13 +268,13 @@ class RegisterVerifiedService:
             raise ValueError("Ce compte est déjà activé")
 
         # Supprimer les anciens tokens
-        await self.user_repo.delete_user_tokens(user.id)
+        await self.register_verified_repo.delete_user_tokens(user.id)
 
         # Générer un nouveau token
         raw_token = self._generate_token()
 
         # Enregistrer le nouveau token
-        await self.user_repo.create_verification_token(
+        await self.register_verified_repo.create_verification_token(
             user_id=user.id,
             token=raw_token,
             expiry_delay=self.settings.verification.token_expiry_delay,

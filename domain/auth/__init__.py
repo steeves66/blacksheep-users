@@ -4,11 +4,11 @@ Module des services d'authentification
 Ce module expose tous les services d'authentification modulaires :
 - RegisterService : Service pour l'inscription simple
 - RegisterVerifiedService : Service pour l'inscription avec vérification email
-- LoginService : Service pour l'authentification
+- AuthService : Service pour l'authentification (login + logout)
 - ResetPasswordService : Service pour la réinitialisation du mot de passe
 """
 
-from .login_service import LoginService
+from .auth_service import AuthService
 from .register_service import RegisterService
 from .register_verified_service import RegisterVerifiedService
 from .reset_password_service import ResetPasswordService
@@ -16,6 +16,6 @@ from .reset_password_service import ResetPasswordService
 __all__ = [
     "RegisterService",
     "RegisterVerifiedService",
-    "LoginService",
+    "AuthService",
     "ResetPasswordService",
 ]
