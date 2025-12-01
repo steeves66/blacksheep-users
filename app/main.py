@@ -107,6 +107,25 @@ from domain.user_service import UserService
 from middlewares.http_session_middleware import HttpSessionStoreMiddleware
 from repositories.user_repository import UserRepository
 
+from repositories.auth import (
+    RegisterRepository,
+    RegisterVerifiedRepository,
+    AuthRepository,
+    ResetPasswordRepository,
+)
+from domain.auth import (
+    RegisterService,
+    RegisterVerifiedService,
+    AuthService,
+    ResetPasswordService,
+)
+from app.controllers.auth import (
+    RegisterController,
+    RegisterVerifiedController,
+    AuthController,
+    ResetPasswordController,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -299,6 +318,19 @@ def configure_application(
     app.services.add_transient(EmailService)
     app.services.add_scoped(UserRepository)
     app.services.add_scoped(UserService)
+
+
+    app.services.add_scoped(RegisterRepository)
+    app.services.add_scoped(RegisterVerifiedRepository)
+    app.services.add_scoped(AuthRepository)
+    app.services.add_scoped(ResetPasswordRepository)
+
+    app.services.add_scoped(RegisterService)
+    app.services.add_scoped(RegisterVerifiedService)
+    app.services.add_scoped(AuthService)
+    app.services.add_scoped(ResetPasswordService)
+
+
 
     logger.info("✓ Services (DI) configurés")
 

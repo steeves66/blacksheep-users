@@ -20,7 +20,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from model.user import User, VerificationToken
+from model.user import User, EmailVerificationToken as VerificationToken
 
 logger = logging.getLogger(__name__)
 

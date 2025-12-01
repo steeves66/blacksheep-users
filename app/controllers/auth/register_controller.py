@@ -40,27 +40,25 @@ class RegisterController(Controller):
     @classmethod
     def class_name(cls) -> str:
         """Nom de la classe pour la génération des routes"""
-        return "register"
+        return "auth/register"
 
-    @get()
+    @get("")
     async def register_form(self, request: Request) -> Response:
         """
         Afficher le formulaire d'inscription simple
-
         GET /auth/register
         """
         return self.view(
             model={
-                "title": "Inscription",
+                "title": "Signup",
                 "error": None,
                 "form_data": {},
             }
         )
 
     @post()
-    @rate_limit(limit=5, per_seconds=3600, scope="register")
     async def register(self, request: Request) -> Response:
-        """
+        """   
         Traiter l'inscription simple (utilisateur actif immédiatement)
 
         POST /auth/register

@@ -1,12 +1,25 @@
-{% extends "layout.jinja" %}
 
-{% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
+{%- extends "layout.jinja" -%}
+
+{%- block title -%}
+    BlackSheep MVC Project Template
+{%- endblock -%}
+
+{%- block description -%}
+    Project template to create web applications with MVC architecture using BlackSheep web framework.
+{%- endblock -%}
+
+{%- block css -%}
+    <link rel="stylesheet" href="{{absurl()}}styles/public.css" />
+{%- endblock -%}
+
+{%- block body -%}
+<div class="container">
+    <div class="row justify-content-center" style="margin-top: 100px; margin-bottom: 80px;">
         <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">{{ title }}</h3>
+            <div class="card shadow mt-10">
+                <div class="card-header bg-primary text-secondary">
+                    <h3 class="mb-0 text-green">{{ title }}</h3>
                 </div>
                 <div class="card-body">
                     {% if error %}
@@ -15,7 +28,9 @@
                     </div>
                     {% endif %}
 
-                    <form method="POST" action="/auth/register">
+                 
+
+                    <form method="POST" action="/auth/register" novalidate>
                         <div class="mb-3">
                             <label for="username" class="form-label">Nom d'utilisateur</label>
                             <input
@@ -78,4 +93,9 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{%- endblock -%}
+
+
+{%- block js -%}
+<script src="{{absurl()}}scripts/freelancer.js"></script>
+{%- endblock -%}

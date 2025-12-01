@@ -1,13 +1,17 @@
-{%- extends "layout.jinja" -%}
+ {%- extends "layout.jinja" -%}
+
 {%- block title -%}
-BlackSheep MVC Project Template
+    BlackSheep MVC Project Template
 {%- endblock -%}
+
 {%- block description -%}
-Project template to create web applications with MVC architecture using BlackSheep web framework.
+    Project template to create web applications with MVC architecture using BlackSheep web framework.
 {%- endblock -%}
+
 {%- block css -%}
-<link rel="stylesheet" href="{{absurl()}}styles/public.css" />
+    <link rel="stylesheet" href="{{absurl()}}styles/public.css" />
 {%- endblock -%}
+
 {%- block body -%}
 
 <header class="masthead bg-primary text-white text-center" style="--bg-color: {{bgcolor()}};">
@@ -260,6 +264,8 @@ class FooExample(APIController):
 </div>
 
 {%- endblock -%}
+
+
 {%- block js -%}
 <script src="{{absurl()}}scripts/freelancer.js"></script>
 {%- endblock -%}

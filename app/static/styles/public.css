@@ -3962,6 +3962,10 @@ input[type="button"].btn-block {
   padding: 0.5rem 1rem;
 }
 
+.navbar-marging {
+  margin-bottom: 3rem;
+}
+
 .navbar > .container,
 .navbar > .container-fluid {
   display: flex;
@@ -7556,6 +7560,11 @@ button.bg-dark:focus {
 .mt-5,
 .my-5 {
   margin-top: 3rem !important;
+}
+
+.mt-10,
+.my-10 {
+  margin-top: 20px !important;
 }
 
 .mr-5,
