@@ -1,0 +1,29 @@
+{% extends "layout.jinja" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">ℹ️ {{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <h4 class="alert-heading">Compte déjà activé</h4>
+                        <p>Le compte associé à l'email <strong>{{ email }}</strong> est déjà activé.</p>
+                        <hr>
+                        <p class="mb-0">Vous pouvez vous connecter directement.</p>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="/auth/login" class="btn btn-primary">
+                            Se connecter
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

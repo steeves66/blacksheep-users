@@ -1,0 +1,47 @@
+{% extends "layout.jinja" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">✅ {{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success" role="alert">
+                        <h4 class="alert-heading">Bienvenue {{ username }} !</h4>
+                        <p>Votre compte a été créé avec succès.</p>
+                        <hr>
+                        {% if email_sent %}
+                        <p class="mb-0">
+                            📧 Un email de vérification a été envoyé à <strong>{{ email }}</strong>.
+                        </p>
+                        <p class="mt-2 mb-0">
+                            Veuillez cliquer sur le lien dans l'email pour activer votre compte.
+                        </p>
+                        {% else %}
+                        <p class="mb-0 text-warning">
+                            ⚠️ L'email n'a pas pu être envoyé. Veuillez contacter l'administrateur.
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    {% if email_sent %}
+                    <div class="alert alert-info mt-3" role="alert">
+                        <p class="mb-0">
+                            <strong>Vous n'avez pas reçu l'email ?</strong>
+                        </p>
+                        <ul class="mt-2 mb-0">
+                            <li>Vérifiez vos spams</li>
+                            <li>Patientez quelques minutes</li>
+                            <li><a href="/auth/register-verified/resend-verification?reason=not_received&email={{ email }}">Renvoyer l'email</a></li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

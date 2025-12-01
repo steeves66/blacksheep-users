@@ -1,0 +1,32 @@
+{% extends "layout.jinja" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">✅ {{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success" role="alert">
+                        <h4 class="alert-heading">Email renvoyé !</h4>
+                        <p>Un nouvel email de vérification a été envoyé à <strong>{{ email }}</strong>.</p>
+                        <hr>
+                        <p class="mb-0">Veuillez vérifier votre boîte de réception et cliquer sur le lien pour activer votre compte.</p>
+                    </div>
+
+                    <div class="alert alert-info mt-3" role="alert">
+                        <p class="mb-0"><strong>Vous n'avez toujours pas reçu l'email ?</strong></p>
+                        <ul class="mt-2 mb-0">
+                            <li>Vérifiez vos spams</li>
+                            <li>Patientez quelques minutes</li>
+                            <li>Vérifiez que l'adresse email est correcte</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

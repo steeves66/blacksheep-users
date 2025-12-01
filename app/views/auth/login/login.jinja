@@ -1,0 +1,91 @@
+{% extends "layout.jinja" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    {% if success %}
+                    <div class="alert alert-success" role="alert">
+                        {{ success }}
+                    </div>
+                    {% endif %}
+
+                    {% if message %}
+                    <div class="alert alert-info" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endif %}
+
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="/auth/login">
+                        <div class="mb-3">
+                            <label for="identifier" class="form-label">Email ou nom d'utilisateur</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="identifier"
+                                name="identifier"
+                                value="{{ identifier or '' }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mot de passe</label>
+                            <input
+                                type="password"
+                                class="form-control"
+                                id="password"
+                                name="password"
+                                required
+                            >
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                Se connecter
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-3">
+                        <p class="text-center">
+                            <a href="/auth/reset-password/forgot-password">Mot de passe oublié ?</a>
+                        </p>
+                    </div>
+
+                    {% if can_resend %}
+                    <div class="alert alert-warning mt-3" role="alert">
+                        Votre compte n'est pas activé. <a href="/auth/register-verified/resend-verification?reason=login_inactive" class="alert-link">Renvoyer l'email de vérification</a>
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p>Pas encore de compte ?</p>
+                        <div class="d-grid gap-2">
+                            <a href="/auth/register" class="btn btn-outline-secondary">
+                                Inscription simple (actif immédiatement)
+                            </a>
+                            <a href="/auth/register-verified" class="btn btn-outline-primary">
+                                Inscription avec vérification email
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
