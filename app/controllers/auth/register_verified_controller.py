@@ -47,7 +47,7 @@ class RegisterVerifiedController(Controller):
     @classmethod
     def class_name(cls) -> str:
         """Nom de la classe pour la génération des routes"""
-        return "register_verified"
+        return "auth/register_verified"
 
     @get()
     async def register_form(self, request: Request) -> Response:
@@ -61,11 +61,12 @@ class RegisterVerifiedController(Controller):
                 "title": "Inscription avec vérification email",
                 "error": None,
                 "form_data": {},
-            }
+            },
+            request=request
         )
 
     @post()
-    @rate_limit(limit=5, per_seconds=3600, scope="register-verified")
+    # @rate_limit(limit=5, per_seconds=3600, scope="register-verified")
     async def register(self, request: Request) -> Response:
         """
         Traiter l'inscription avec vérification email
@@ -103,7 +104,8 @@ class RegisterVerifiedController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                request=request
                 )
 
             if len(password) < 8:
@@ -115,7 +117,8 @@ class RegisterVerifiedController(Controller):
                             "username": username,
                             "email": email,
                         },
-                    }
+                    },
+                request=request
                 )
 
             # Créer l'utilisateur (inactif) et envoyer l'email
@@ -134,6 +137,7 @@ class RegisterVerifiedController(Controller):
                     "email": user.email,
                     "email_sent": email_sent,
                 },
+                request=request
             )
 
         except ValueError as e:
@@ -146,7 +150,8 @@ class RegisterVerifiedController(Controller):
                         "username": username if "username" in locals() else "",
                         "email": email if "email" in locals() else "",
                     },
-                }
+                },
+                request=request
             )
 
         except Exception as e:
@@ -159,7 +164,8 @@ class RegisterVerifiedController(Controller):
                         "username": username if "username" in locals() else "",
                         "email": email if "email" in locals() else "",
                     },
-                }
+                },
+                request=request
             )
 
     @get("/verify-email/{token}")
@@ -231,10 +237,11 @@ class RegisterVerifiedController(Controller):
                 "email": email,
                 "error": None,
             },
+            request=request
         )
 
     @post("/resend-verification")
-    @rate_limit(limit=3, per_seconds=600, scope="resend-verification")
+    # @rate_limit(limit=3, per_seconds=600, scope="resend-verification")
     async def resend_verification(self, request: Request) -> Response:
         """
         Traiter le renvoi d'email de vérification
@@ -254,6 +261,7 @@ class RegisterVerifiedController(Controller):
                         "email": "",
                         "context_message": "Entrez votre email pour recevoir un nouveau lien de vérification.",
                     },
+                    request=request
                 )
 
             # Renvoyer l'email
@@ -271,6 +279,7 @@ class RegisterVerifiedController(Controller):
                         "email": email,
                         "context_message": "Entrez votre email pour recevoir un nouveau lien de vérification.",
                     },
+                    request=request
                 )
 
             logger.info(f"Verification email resent to: {email}")
@@ -281,6 +290,7 @@ class RegisterVerifiedController(Controller):
                     "title": "Email renvoyé",
                     "email": email,
                 },
+                request=request
             )
 
         except ValueError as e:
@@ -293,6 +303,7 @@ class RegisterVerifiedController(Controller):
                     "email": email if "email" in locals() else "",
                     "context_message": "Entrez votre email pour recevoir un nouveau lien de vérification.",
                 },
+                request=request
             )
 
         except Exception as e:
@@ -307,6 +318,7 @@ class RegisterVerifiedController(Controller):
                     "email": email if "email" in locals() else "",
                     "context_message": "Entrez votre email pour recevoir un nouveau lien de vérification.",
                 },
+                request=request
             )
 
     @get("/account-active")
@@ -325,4 +337,5 @@ class RegisterVerifiedController(Controller):
                 "title": "Compte déjà activé",
                 "email": email,
             },
+            request=request
         )

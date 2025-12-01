@@ -1,11 +1,23 @@
-{% extends "layout.jinja" %}
+{%- extends "layout.jinja" -%}
 
-{% block content %}
+{%- block title -%}
+    BlackSheep MVC Project Template
+{%- endblock -%}
+
+{%- block description -%}
+    Project template to create web applications with MVC architecture using BlackSheep web framework.
+{%- endblock -%}
+
+{%- block css -%}
+    <link rel="stylesheet" href="{{absurl()}}styles/public.css" />
+{%- endblock -%}
+
+{%- block body -%}
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card shadow">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-primary text-secondary">
                     <h3 class="mb-0">{{ title }}</h3>
                 </div>
                 <div class="card-body">
@@ -83,4 +95,9 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{%- endblock -%}
+
+
+{%- block js -%}
+<script src="{{absurl()}}scripts/freelancer.js"></script>
+{%- endblock -%}
