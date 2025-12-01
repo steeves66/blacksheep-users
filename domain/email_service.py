@@ -124,38 +124,8 @@ class EmailService:
             )
             return True
         except Exception as e:
-            print(f"Erreur lors de l'envoi de l'email de renvoi: {e}")
+            logger.error(f"Erreur lors de l'envoi de l'email de renvoi: {e}")
             return False
-            """Renvoyer un email de vérification"""
-            user = await self.user_repo.get_user_by_email(email)
-
-            if not user:
-                raise ValueError("Aucun utilisateur trouvé avec cet email")
-
-            if user.is_active:
-                raise ValueError("Ce compte est déjà activé")
-
-            await self.user_repo.delete_user_tokens(user.id)
-            raw_token = self._generate_token()
-
-            await self.user_repo.create_verification_token(
-                user_id=user.id,
-                token=raw_token,
-                expiry_delay=self.settings.verification.token_expiry_delay,
-            )
-
-            signed_token = self._sign_token(user.id, raw_token)
-            verification_url = f"{self.settings.verification.base_url}/users/verify-email/{signed_token}"
-
-            # Utiliser la méthode personnalisée pour le renvoi
-            email_sent = await self.email_service.send_resend_verification_email(
-                to=user.email,
-                verification_link=verification_url,
-                username=user.username,
-            )
-
-            logger.info(f"Verification email resent to: {email}")
-            return email_sent
 
     async def send_password_reset_email(
         self, to: str, reset_link: str, username: str
@@ -182,4 +152,165 @@ class EmailService:
             return True
         except Exception as e:
             logger.error(f"Erreur lors de l'envoi de l'email de reset: {e}")
+            return False
+
+    # ==========================================
+    # ⭐ NOUVEAUX EMAILS - Architecture modulaire
+    # ==========================================
+
+    async def send_account_creation_confirmation(
+        self, to: str, username: str
+    ) -> bool:
+        """
+        Envoie un email de confirmation de création de compte
+        (envoyé immédiatement après la création du compte)
+        """
+        try:
+            subject = "✅ Votre compte a été créé avec succès"
+            body_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #4CAF50;">Compte créé avec succès !</h2>
+                    <p>Bonjour <strong>{username}</strong>,</p>
+                    <p>Votre compte a été créé avec succès. Vous allez recevoir un email de vérification dans quelques instants.</p>
+                    <p>Veuillez cliquer sur le lien dans cet email pour activer votre compte.</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">
+                        Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+            body_text = f"""
+Compte créé avec succès !
+
+Bonjour {username},
+
+Votre compte a été créé avec succès. Vous allez recevoir un email de vérification dans quelques instants.
+
+Veuillez cliquer sur le lien dans cet email pour activer votre compte.
+
+---
+Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+            """
+
+            await self.send_email(
+                to=to,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+            logger.info(f"Account creation confirmation sent to: {to}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de confirmation: {e}")
+            return False
+
+    async def send_thank_you_email(self, to: str, username: str) -> bool:
+        """
+        Envoie un email de remerciement après activation du compte
+        """
+        try:
+            subject = "🙏 Merci d'avoir activé votre compte"
+            body_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2196F3;">Merci {username} !</h2>
+                    <p>Votre compte a été activé avec succès.</p>
+                    <p>Nous vous remercions d'avoir pris le temps de vérifier votre email.</p>
+                    <p>Vous pouvez maintenant vous connecter et profiter de toutes les fonctionnalités de notre plateforme.</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">
+                        Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+            body_text = f"""
+Merci {username} !
+
+Votre compte a été activé avec succès.
+
+Nous vous remercions d'avoir pris le temps de vérifier votre email.
+
+Vous pouvez maintenant vous connecter et profiter de toutes les fonctionnalités de notre plateforme.
+
+---
+Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+            """
+
+            await self.send_email(
+                to=to,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+            logger.info(f"Thank you email sent to: {to}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de remerciement: {e}")
+            return False
+
+    async def send_welcome_email(self, to: str, username: str) -> bool:
+        """
+        Envoie un email de bienvenue après activation du compte
+        """
+        try:
+            subject = "🎉 Bienvenue sur notre plateforme !"
+            body_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #FF9800;">🎉 Bienvenue {username} !</h2>
+                    <p>Nous sommes ravis de vous accueillir sur notre plateforme.</p>
+                    <p>Voici quelques conseils pour bien démarrer :</p>
+                    <ul>
+                        <li>Complétez votre profil</li>
+                        <li>Explorez les fonctionnalités</li>
+                        <li>Rejoignez notre communauté</li>
+                    </ul>
+                    <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+                    <p style="margin-top: 30px;">
+                        <strong>L'équipe</strong>
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">
+                        Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+            body_text = f"""
+🎉 Bienvenue {username} !
+
+Nous sommes ravis de vous accueillir sur notre plateforme.
+
+Voici quelques conseils pour bien démarrer :
+- Complétez votre profil
+- Explorez les fonctionnalités
+- Rejoignez notre communauté
+
+Si vous avez des questions, n'hésitez pas à nous contacter.
+
+L'équipe
+
+---
+Cet email a été envoyé automatiquement. Merci de ne pas y répondre.
+            """
+
+            await self.send_email(
+                to=to,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+            logger.info(f"Welcome email sent to: {to}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email de bienvenue: {e}")
             return False

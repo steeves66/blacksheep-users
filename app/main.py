@@ -107,6 +107,20 @@ from domain.user_service import UserService
 from middlewares.http_session_middleware import HttpSessionStoreMiddleware
 from repositories.user_repository import UserRepository
 
+# ⭐ NOUVEAUX IMPORTS - Architecture modulaire d'authentification
+from repositories.auth import (
+    RegisterRepository,
+    RegisterVerifiedRepository,
+    AuthRepository,
+    ResetPasswordRepository,
+)
+from domain.auth import (
+    RegisterService,
+    RegisterVerifiedService,
+    AuthService,
+    ResetPasswordService,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -295,12 +309,28 @@ def configure_application(
     # 3. SERVICES (Dependency Injection)
     # ==========================================
 
-    # Services métier
+    # Services métier (anciens - à migrer progressivement)
     app.services.add_transient(EmailService)
     app.services.add_scoped(UserRepository)
     app.services.add_scoped(UserService)
 
+    # ⭐ NOUVEAUX SERVICES - Architecture modulaire d'authentification
+    # Repositories (scoped - une instance par requête)
+    app.services.add_scoped(RegisterRepository)
+    app.services.add_scoped(RegisterVerifiedRepository)
+    app.services.add_scoped(AuthRepository)
+    app.services.add_scoped(ResetPasswordRepository)
+
+    # Services d'authentification
+    app.services.add_scoped(RegisterService)
+    app.services.add_scoped(RegisterVerifiedService)
+    app.services.add_scoped(AuthService)
+    app.services.add_scoped(ResetPasswordService)
+
     logger.info("✓ Services (DI) configurés")
+    logger.info("   - Anciens services : EmailService, UserRepository, UserService")
+    logger.info("   - Nouveaux repositories : 4 (RegisterRepository, RegisterVerifiedRepository, AuthRepository, ResetPasswordRepository)")
+    logger.info("   - Nouveaux services : 4 (RegisterService, RegisterVerifiedService, AuthService, ResetPasswordService)")
 
     # ==========================================
     # 4. FICHIERS STATIQUES
